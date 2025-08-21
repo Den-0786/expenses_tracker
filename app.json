@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Expenses Tracker",
+    "slug": "expenses-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#1E88E5",
+    "statusBar": {
+      "backgroundColor": "#1E88E5",
+      "barStyle": "light-content"
+    },
+
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1E88E5"
+      }
+    },
+    "web": {
+      "favicon": null
+    },
+    "plugins": ["expo-font", "expo-sqlite"]
+  }
+}
