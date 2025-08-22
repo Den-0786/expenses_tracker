@@ -20,6 +20,7 @@ import { useNotifications } from "../context/NotificationContext";
 import { useTheme } from "../context/ThemeContext";
 import { useSecurity } from "../context/SecurityContext";
 import { useSecurityNotice } from "../context/SecurityNoticeContext";
+import { useAuth } from "../context/AuthContext";
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
@@ -43,6 +44,7 @@ const SettingsScreen = () => {
   } = useSecurity();
   const { showSecurityNotice, updateSecurityNoticeSetting } =
     useSecurityNotice();
+  const { signOut } = useAuth();
 
   const [userSettings, setUserSettings] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -67,24 +69,21 @@ const SettingsScreen = () => {
     loadSettings();
   }, []);
 
-
   useEffect(() => {
     if (showSecurityNotice !== undefined) {
       setLocalSecurityNotice(showSecurityNotice);
     }
   }, [showSecurityNotice]);
 
-
   useEffect(() => {
-// sourcery skip: merge-nested-ifs
+    // sourcery skip: merge-nested-ifs
     if (isSecurityEnabled && localSecurityNotice) {
-      
       if (showSecurityNotice === undefined || showSecurityNotice === true) {
         updateSecurityNoticeSetting(false);
         setLocalSecurityNotice(false);
       }
     }
-  }, [isSecurityEnabled]); 
+  }, [isSecurityEnabled]);
 
   const showSnackbar = (message, type = "info") => {
     setSnackbarMessage(message);
@@ -674,11 +673,11 @@ const SettingsScreen = () => {
               <Divider style={styles.divider} />
               <Button
                 mode="outlined"
-                onPress={() => {}}
+                onPress={signOut}
                 style={styles.dangerButton}
                 textColor="#F44336"
               >
-                Delete Account
+                Sign Out
               </Button>
             </Card.Content>
           </Card>
@@ -711,7 +710,6 @@ const SettingsScreen = () => {
               <Divider style={styles.itemDivider} />
               <List.Item
                 title="Theme"
-                
                 left={(props) => (
                   <List.Icon {...props} icon="theme-light-dark" />
                 )}
@@ -1048,14 +1046,24 @@ const SettingsScreen = () => {
                 Warning: This will delete all your data and reset the app to its
                 initial state.
               </Text>
-              <Button
-                mode="outlined"
-                onPress={handleResetApp}
-                style={styles.dangerButton}
-                textColor="#F44336"
-              >
-                Reset App
-              </Button>
+              <View style={styles.resetButtons}>
+                <Button
+                  mode="outlined"
+                  onPress={handleResetApp}
+                  style={styles.dangerButton}
+                  textColor="#F44336"
+                >
+                  Reset App
+                </Button>
+                <Button
+                  mode="outlined"
+                  onPress={signOut}
+                  style={styles.dangerButton}
+                  textColor="#FF9800"
+                >
+                  Sign Out
+                </Button>
+              </View>
             </Card.Content>
           </Card>
 
@@ -1387,6 +1395,11 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     backgroundColor: "#BDBDBD",
     height: 1.5,
+  },
+  resetButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
   },
 });
 

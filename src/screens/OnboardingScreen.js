@@ -6,6 +6,8 @@ import {
   Dimensions,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import {
   TextInput,
@@ -22,6 +24,7 @@ import { useNotifications } from "../context/NotificationContext";
 import { useTheme } from "../context/ThemeContext";
 import { useSecurity } from "../context/SecurityContext";
 import { useSecurityNotice } from "../context/SecurityNoticeContext";
+import { useAuth } from "../context/AuthContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -37,6 +40,14 @@ const OnboardingScreen = () => {
   const { isSecurityEnabled } = useSecurity();
   const { showSecurityNotice, updateSecurityNoticeSetting } =
     useSecurityNotice();
+  const { completeOnboarding, isAuthenticated } = useAuth();
+
+  // Redirect to auth if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigation.replace("Auth");
+    }
+  }, [isAuthenticated, navigation]);
 
   const [showSetup, setShowSetup] = useState(false);
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
@@ -49,6 +60,10 @@ const OnboardingScreen = () => {
   const [snackbarType, setSnackbarType] = useState("success");
   const [splashProgress, setSplashProgress] = useState(0);
   const [userSettings, setUserSettings] = useState(null);
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [pinStep, setPinStep] = useState("pin"); // "pin" or "confirm"
 
   // Removed Animated reference since we're not using animations
 
@@ -159,15 +174,55 @@ const OnboardingScreen = () => {
       await scheduleWeeklyReminder();
       await scheduleMonthlyReminder();
 
-      showSnackbar("Setup complete! Redirecting to main app...", "success");
-      setTimeout(() => {
-        navigation.replace("Main");
-      }, 1500);
+      // Show PIN setup after payment setup
+      setShowPinSetup(true);
+      setLoading(false);
     } catch (error) {
       console.error("Error saving settings:", error);
       showSnackbar("Failed to save settings. Please try again.", "error");
-    } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePinSetup = async () => {
+    if (pinStep === "pin") {
+      // First step: validate PIN and move to confirmation
+      if (pin.length < 4) {
+        showSnackbar("PIN must be at least 4 digits", "error");
+        return;
+      }
+      setPinStep("confirm");
+    } else {
+      // Second step: confirm PIN
+      if (pin !== confirmPin) {
+        showSnackbar("PINs do not match. Please try again.", "error");
+        setConfirmPin("");
+        return;
+      }
+
+      try {
+        // Set PIN and complete onboarding
+        await completeOnboarding(pin);
+        showSnackbar("Setup complete! Redirecting to main app...", "success");
+        setTimeout(() => {
+          navigation.replace("MainTabs");
+        }, 1500);
+      } catch (error) {
+        showSnackbar("An error occurred. Please try again.", "error");
+      }
+    }
+  };
+
+  const handleSkipPin = async () => {
+    try {
+      // Complete onboarding without PIN
+      await completeOnboarding();
+      showSnackbar("Setup complete! Redirecting to main app...", "success");
+      setTimeout(() => {
+        navigation.replace("MainTabs");
+      }, 1500);
+    } catch (error) {
+      showSnackbar("An error occurred. Please try again.", "error");
     }
   };
 
@@ -549,6 +604,71 @@ const OnboardingScreen = () => {
                 >
                   {userSettings ? "Update Settings" : "Complete Setup"}
                 </Button>
+
+                {/* PIN Setup Step */}
+                {showPinSetup && (
+                  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <Card style={styles.pinSetupCard}>
+                      <Card.Content>
+                        <Title style={styles.pinSetupTitle}>
+                          {pinStep === "pin"
+                            ? "Set Your PIN"
+                            : "Confirm Your PIN"}
+                        </Title>
+                        <Text style={styles.pinSetupSubtitle}>
+                          {pinStep === "pin"
+                            ? "Choose a 4-6 digit PIN to secure your app"
+                            : "Re-enter your PIN to confirm"}
+                        </Text>
+
+                        <TextInput
+                          label={
+                            pinStep === "pin" ? "Enter PIN" : "Confirm PIN"
+                          }
+                          value={pinStep === "pin" ? pin : confirmPin}
+                          onChangeText={
+                            pinStep === "pin" ? setPin : setConfirmPin
+                          }
+                          keyboardType="numeric"
+                          mode="outlined"
+                          style={styles.pinInput}
+                          placeholder="PIN"
+                          maxLength={6}
+                          secureTextEntry
+                          textColor={theme.colors.text}
+                          placeholderTextColor={theme.colors.textSecondary}
+                          outlineColor={theme.colors.border}
+                          activeOutlineColor={theme.colors.primary}
+                        />
+
+                        <View style={styles.pinSetupButtons}>
+                          <Button
+                            mode="outlined"
+                            onPress={handleSkipPin}
+                            style={styles.pinSetupButton}
+                            textColor={theme.colors.textSecondary}
+                            outlineColor={theme.colors.border}
+                          >
+                            Skip PIN
+                          </Button>
+                          <Button
+                            mode="contained"
+                            onPress={handlePinSetup}
+                            disabled={
+                              (pinStep === "pin" && pin.length < 4) ||
+                              (pinStep === "confirm" && confirmPin.length < 4)
+                            }
+                            style={styles.pinSetupButton}
+                            buttonColor={theme.colors.primary}
+                            textColor="#FFFFFF"
+                          >
+                            {pinStep === "pin" ? "Continue" : "Set PIN"}
+                          </Button>
+                        </View>
+                      </Card.Content>
+                    </Card>
+                  </TouchableWithoutFeedback>
+                )}
               </Card.Content>
             </ScrollView>
           </Card>
@@ -863,6 +983,38 @@ const styles = StyleSheet.create({
     color: "#856404",
     fontStyle: "italic",
     textAlign: "center",
+  },
+  // PIN Setup styles
+  pinSetupCard: {
+    marginTop: 20,
+    borderRadius: 12,
+    elevation: 4,
+    backgroundColor: "#f8f9fa",
+  },
+  pinSetupTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  pinSetupSubtitle: {
+    fontSize: 14,
+    color: "#6c757d",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  pinInput: {
+    marginBottom: 20,
+    borderRadius: 12,
+  },
+  pinSetupButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    gap: 10,
+  },
+  pinSetupButton: {
+    flex: 1,
+    borderRadius: 12,
   },
 });
 
