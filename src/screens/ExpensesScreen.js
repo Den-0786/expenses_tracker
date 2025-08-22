@@ -20,6 +20,7 @@ import {
   Snackbar,
 } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   format,
   parseISO,
@@ -173,10 +174,7 @@ const ExpensesScreen = () => {
       showSnackbar("Expense deleted successfully!", "success");
     } catch (error) {
       console.error("Error deleting expense:", error);
-      showSnackbar(
-        "Failed to delete expense. Please try again.",
-        "error"
-      );
+      showSnackbar("Failed to delete expense. Please try again.", "error");
     }
   };
 
@@ -229,8 +227,8 @@ const ExpensesScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
+      {/* Sticky Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Expenses</Text>
         <Text style={styles.headerSubtitle}>
@@ -238,139 +236,150 @@ const ExpensesScreen = () => {
         </Text>
       </View>
 
-      {/* Filters */}
-      <View style={styles.filtersContainer}>
-        <Searchbar
-          placeholder="Search expenses..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchBar}
-        />
+      {/* Main Content Container - Gray Parent Card */}
+      <View style={styles.contentContainer}>
+        {/* Sticky Filters */}
+        <View style={styles.filtersContainer}>
+          <Searchbar
+            placeholder="Search expenses..."
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchBar}
+          />
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterScroll}
-        >
-          <Chip
-            selected={selectedFilter === "all"}
-            onPress={() => setSelectedFilter("all")}
-            style={styles.filterChip}
-            textStyle={styles.filterChipText}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScroll}
           >
-            All
-          </Chip>
-          {getUniqueCategories().map((category) => (
             <Chip
-              key={category}
-              selected={selectedFilter === category}
-              onPress={() => setSelectedFilter(category)}
+              selected={selectedFilter === "all"}
+              onPress={() => setSelectedFilter("all")}
               style={styles.filterChip}
               textStyle={styles.filterChipText}
             >
-              {category}
+              All
             </Chip>
-          ))}
-        </ScrollView>
+            {getUniqueCategories().map((category) => (
+              <Chip
+                key={category}
+                selected={selectedFilter === category}
+                onPress={() => setSelectedFilter(category)}
+                style={styles.filterChip}
+                textStyle={styles.filterChipText}
+              >
+                {category}
+              </Chip>
+            ))}
+          </ScrollView>
 
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.dateFilterScroll}
+          >
+            {[
+              { key: "week", label: "This Week" },
+              { key: "month", label: "This Month" },
+              { key: "all", label: "All Time" },
+            ].map((filter) => (
+              <Chip
+                key={filter.key}
+                selected={dateRange === filter.key}
+                onPress={() => setDateRange(filter.key)}
+                style={styles.dateFilterChip}
+                textStyle={styles.dateFilterChipText}
+              >
+                {filter.label}
+              </Chip>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Scrollable Expenses List */}
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.dateFilterScroll}
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
         >
-          {[
-            { key: "week", label: "This Week" },
-            { key: "month", label: "This Month" },
-            { key: "all", label: "All Time" },
-          ].map((filter) => (
-            <Chip
-              key={filter.key}
-              selected={dateRange === filter.key}
-              onPress={() => setDateRange(filter.key)}
-              style={styles.dateFilterChip}
-              textStyle={styles.dateFilterChipText}
-            >
-              {filter.label}
-            </Chip>
-          ))}
+          {/* Expenses List */}
+          {filteredExpenses.length === 0 ? (
+            <View style={styles.emptyState}>
+              <MaterialIcons name="receipt" size={64} color="#ccc" />
+              <Text style={styles.emptyStateText}>No expenses found</Text>
+              <Text style={styles.emptyStateSubtext}>
+                {searchQuery
+                  ? "Try adjusting your search or filters"
+                  : "Add your first expense to get started"}
+              </Text>
+            </View>
+          ) : (
+            Object.entries(groupExpensesByDate()).map(
+              ([date, dateExpenses]) => (
+                <View key={date} style={styles.dateGroup}>
+                  <Text style={styles.dateHeader}>{getDateLabel(date)}</Text>
+                  {dateExpenses.map((expense) => (
+                    <Card key={expense.id} style={styles.expenseCard}>
+                      <Card.Content>
+                        <View style={styles.expenseHeader}>
+                          <View style={styles.expenseLeft}>
+                            <MaterialIcons
+                              name={getCategoryIcon(expense.category)}
+                              size={24}
+                              color="#2196F3"
+                              style={styles.expenseIcon}
+                            />
+                            <View style={styles.expenseInfo}>
+                              <Text style={styles.expenseDescription}>
+                                {expense.description}
+                              </Text>
+                              <Text style={styles.expenseCategory}>
+                                {expense.category || "General"}
+                              </Text>
+                              <Text style={styles.expenseTime}>
+                                {format(parseISO(expense.created_at), "h:mm a")}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={styles.expenseRight}>
+                            <Text style={styles.expenseAmount}>
+                              ${expense.amount.toFixed(2)}
+                            </Text>
+                            <View style={styles.expenseActions}>
+                              <TouchableOpacity
+                                onPress={() => handleEditExpense(expense)}
+                                style={styles.actionButton}
+                              >
+                                <MaterialIcons
+                                  name="edit"
+                                  size={20}
+                                  color="#666"
+                                />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => handleDeleteExpense(expense)}
+                                style={styles.actionButton}
+                              >
+                                <MaterialIcons
+                                  name="delete"
+                                  size={20}
+                                  color="#F44336"
+                                />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </View>
+                      </Card.Content>
+                    </Card>
+                  ))}
+                </View>
+              )
+            )
+          )}
         </ScrollView>
       </View>
-
-      {/* Expenses List */}
-      <ScrollView
-        style={styles.expensesList}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {filteredExpenses.length === 0 ? (
-          <View style={styles.emptyState}>
-            <MaterialIcons name="receipt" size={64} color="#ccc" />
-            <Text style={styles.emptyStateText}>No expenses found</Text>
-            <Text style={styles.emptyStateSubtext}>
-              {searchQuery
-                ? "Try adjusting your search or filters"
-                : "Add your first expense to get started"}
-            </Text>
-          </View>
-        ) : (
-          Object.entries(groupExpensesByDate()).map(([date, dateExpenses]) => (
-            <View key={date} style={styles.dateGroup}>
-              <Text style={styles.dateHeader}>{getDateLabel(date)}</Text>
-              {dateExpenses.map((expense) => (
-                <Card key={expense.id} style={styles.expenseCard}>
-                  <Card.Content>
-                    <View style={styles.expenseHeader}>
-                      <View style={styles.expenseLeft}>
-                        <MaterialIcons
-                          name={getCategoryIcon(expense.category)}
-                          size={24}
-                          color="#2196F3"
-                          style={styles.expenseIcon}
-                        />
-                        <View style={styles.expenseInfo}>
-                          <Text style={styles.expenseDescription}>
-                            {expense.description}
-                          </Text>
-                          <Text style={styles.expenseCategory}>
-                            {expense.category || "General"}
-                          </Text>
-                          <Text style={styles.expenseTime}>
-                            {format(parseISO(expense.created_at), "h:mm a")}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.expenseRight}>
-                        <Text style={styles.expenseAmount}>
-                          ${expense.amount.toFixed(2)}
-                        </Text>
-                        <View style={styles.expenseActions}>
-                          <TouchableOpacity
-                            onPress={() => handleEditExpense(expense)}
-                            style={styles.actionButton}
-                          >
-                            <MaterialIcons name="edit" size={20} color="#666" />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => handleDeleteExpense(expense)}
-                            style={styles.actionButton}
-                          >
-                            <MaterialIcons
-                              name="delete"
-                              size={20}
-                              color="#F44336"
-                            />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </View>
-                  </Card.Content>
-                </Card>
-              ))}
-            </View>
-          ))
-        )}
-      </ScrollView>
 
       {/* Edit Expense Modal */}
       <Portal>
@@ -403,7 +412,7 @@ const ExpensesScreen = () => {
           />
 
           <TextInput
-            label="Category (Optional)"
+            label="Category"
             value={editForm.category}
             onChangeText={(text) =>
               setEditForm({ ...editForm, category: text })
@@ -451,7 +460,7 @@ const ExpensesScreen = () => {
       >
         {snackbarMessage}
       </Snackbar>
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -461,30 +470,54 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   header: {
-    backgroundColor: "#2196F3",
+    backgroundColor: "transparent",
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: 30,
     paddingHorizontal: 20,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
     color: "#ffffff",
-    marginBottom: 4,
+    marginBottom: 1,
   },
   headerSubtitle: {
     fontSize: 16,
     color: "#ffffff",
     opacity: 0.9,
   },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginTop: -20,
+    marginHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  scrollView: {
+    flex: 1,
+  },
   filtersContainer: {
     backgroundColor: "#ffffff",
-    padding: 20,
-    paddingBottom: 10,
+    padding: 15,
+    margin: 10,
+    marginBottom: 20,
+    borderRadius: 12,
+    elevation: 2,
   },
   searchBar: {
     marginBottom: 15,
     elevation: 2,
+    padding: 0,
   },
   filterScroll: {
     marginBottom: 15,
@@ -533,10 +566,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#666",
-    marginBottom: 10,
+    marginBottom: 0,
     paddingHorizontal: 5,
   },
   expenseCard: {
+    margin: 7,
     marginBottom: 10,
     elevation: 2,
     borderRadius: 8,
@@ -558,8 +592,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   expenseDescription: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "500",
     color: "#333",
     marginBottom: 2,
   },
@@ -576,10 +610,10 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   expenseAmount: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "bold",
     color: "#2196F3",
-    marginBottom: 8,
+    marginBottom: 4,
   },
   expenseActions: {
     flexDirection: "row",

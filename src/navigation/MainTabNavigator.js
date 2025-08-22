@@ -1,6 +1,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../context/ThemeContext";
 
 import HomeScreen from "../screens/HomeScreen";
@@ -55,7 +56,7 @@ const MainTabNavigator = () => {
         tabBarInactiveTintColor: "rgba(255, 255, 255, 0.7)",
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: getTabBarColor(route.name),
+          backgroundColor: "transparent",
           borderTopWidth: 0,
           paddingBottom: 5,
           paddingTop: 5,
@@ -66,6 +67,14 @@ const MainTabNavigator = () => {
           shadowOpacity: 0.1,
           shadowRadius: 4,
         },
+        tabBarBackground: () => (
+          <LinearGradient
+            colors={["#4CAF50", "#2196F3"]}
+            style={{ flex: 1 }}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          />
+        ),
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "600",

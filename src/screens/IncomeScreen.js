@@ -20,6 +20,7 @@ import {
   Snackbar,
 } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   format,
   parseISO,
@@ -223,8 +224,8 @@ const IncomeScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
+      {/* Sticky Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Income</Text>
         <Text style={styles.headerSubtitle}>
@@ -232,125 +233,129 @@ const IncomeScreen = () => {
         </Text>
       </View>
 
-      {/* Filters */}
-      <View style={styles.filtersContainer}>
-        <Searchbar
-          placeholder="Search income..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchBar}
-        />
+      {/* Main Content Container - Gray Parent Card */}
+      <View style={styles.contentContainer}>
+        {/* Sticky Filters */}
+        <View style={styles.filtersContainer}>
+          <Searchbar
+            placeholder="Search income..."
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchBar}
+          />
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterScroll}
-        >
-          <Chip
-            selected={selectedFilter === "all"}
-            onPress={() => setSelectedFilter("all")}
-            style={styles.filterChip}
-            textStyle={styles.filterChipText}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScroll}
           >
-            All
-          </Chip>
-          {getUniqueCategories().map((category) => (
             <Chip
-              key={category}
-              selected={selectedFilter === category}
-              onPress={() => setSelectedFilter(category)}
+              selected={selectedFilter === "all"}
+              onPress={() => setSelectedFilter("all")}
               style={styles.filterChip}
               textStyle={styles.filterChipText}
             >
-              {category}
+              All
             </Chip>
-          ))}
-        </ScrollView>
+            {getUniqueCategories().map((category) => (
+              <Chip
+                key={category}
+                selected={selectedFilter === category}
+                onPress={() => setSelectedFilter(category)}
+                style={styles.filterChip}
+                textStyle={styles.filterChipText}
+              >
+                {category}
+              </Chip>
+            ))}
+          </ScrollView>
 
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.dateFilterScroll}
+          >
+            {[
+              { key: "day", label: "Today" },
+              { key: "week", label: "This Week" },
+              { key: "month", label: "This Month" },
+              { key: "all", label: "All Time" },
+            ].map((filter) => (
+              <Chip
+                key={filter.key}
+                selected={dateRange === filter.key}
+                onPress={() => setDateRange(filter.key)}
+                style={styles.dateFilterChip}
+                textStyle={styles.dateFilterChipText}
+              >
+                {filter.label}
+              </Chip>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Scrollable Income List */}
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.dateFilterScroll}
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
         >
-          {[
-            { key: "day", label: "Today" },
-            { key: "week", label: "This Week" },
-            { key: "month", label: "This Month" },
-            { key: "all", label: "All Time" },
-          ].map((filter) => (
-            <Chip
-              key={filter.key}
-              selected={dateRange === filter.key}
-              onPress={() => setDateRange(filter.key)}
-              style={styles.dateFilterChip}
-              textStyle={styles.dateFilterChipText}
-            >
-              {filter.label}
-            </Chip>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Income List */}
-      <ScrollView
-        style={styles.incomeList}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {filteredIncome.length === 0 ? (
-          <View style={styles.emptyState}>
-            <MaterialIcons name="trending-up" size={64} color="#ccc" />
-            <Text style={styles.emptyStateText}>No income found</Text>
-            <Text style={styles.emptyStateSubtext}>
-              {searchQuery
-                ? "Try adjusting your search or filters"
-                : "Add your first income to get started"}
-            </Text>
-          </View>
-        ) : (
-          Object.entries(groupIncomeByDate()).map(([date, dateIncome]) => (
-            <View key={date} style={styles.dateGroup}>
-              <Text style={styles.dateHeader}>{getDateLabel(date)}</Text>
-              {dateIncome.map((income) => (
-                <Card key={income.id} style={styles.incomeCard}>
-                  <Card.Content>
-                    <View style={styles.incomeHeader}>
-                      <View style={styles.incomeLeft}>
-                        <MaterialIcons
-                          name={getCategoryIcon(income.category)}
-                          size={24}
-                          color="#4CAF50"
-                          style={styles.incomeIcon}
-                        />
-                        <View style={styles.incomeInfo}>
-                          <Text style={styles.incomeDescription}>
-                            {income.description}
-                          </Text>
-                          <Text style={styles.incomeCategory}>
-                            {income.category || "General"}
-                          </Text>
-                          <Text style={styles.incomeSource}>
-                            {income.source || "Unknown"}
-                          </Text>
-                          <Text style={styles.incomeTime}>
-                            {format(parseISO(income.created_at), "h:mm a")}
+          {filteredIncome.length === 0 ? (
+            <View style={styles.emptyState}>
+              <MaterialIcons name="trending-up" size={64} color="#ccc" />
+              <Text style={styles.emptyStateText}>No income found</Text>
+              <Text style={styles.emptyStateSubtext}>
+                {searchQuery
+                  ? "Try adjusting your search or filters"
+                  : "Add your first income to get started"}
+              </Text>
+            </View>
+          ) : (
+            Object.entries(groupIncomeByDate()).map(([date, dateIncome]) => (
+              <View key={date} style={styles.dateGroup}>
+                <Text style={styles.dateHeader}>{getDateLabel(date)}</Text>
+                {dateIncome.map((income) => (
+                  <Card key={income.id} style={styles.incomeCard}>
+                    <Card.Content>
+                      <View style={styles.incomeHeader}>
+                        <View style={styles.incomeLeft}>
+                          <MaterialIcons
+                            name={getCategoryIcon(income.category)}
+                            size={24}
+                            color="#4CAF50"
+                            style={styles.incomeIcon}
+                          />
+                          <View style={styles.incomeInfo}>
+                            <Text style={styles.incomeDescription}>
+                              {income.description}
+                            </Text>
+                            <Text style={styles.incomeCategory}>
+                              {income.category || "General"}
+                            </Text>
+                            <Text style={styles.incomeSource}>
+                              {income.source || "Unknown"}
+                            </Text>
+                            <Text style={styles.incomeTime}>
+                              {format(parseISO(income.created_at), "h:mm a")}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.incomeRight}>
+                          <Text style={styles.incomeAmount}>
+                            +${income.amount.toFixed(2)}
                           </Text>
                         </View>
                       </View>
-                      <View style={styles.incomeRight}>
-                        <Text style={styles.incomeAmount}>
-                          +${income.amount.toFixed(2)}
-                        </Text>
-                      </View>
-                    </View>
-                  </Card.Content>
-                </Card>
-              ))}
-            </View>
-          ))
-        )}
-      </ScrollView>
+                    </Card.Content>
+                  </Card>
+                ))}
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </View>
 
       {/* Add Income FAB */}
       <FAB
@@ -451,7 +456,7 @@ const IncomeScreen = () => {
       >
         {snackbarMessage}
       </Snackbar>
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -461,26 +466,46 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   header: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "transparent",
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: 30,
     paddingHorizontal: 20,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
     color: "#ffffff",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 16,
     color: "#ffffff",
     opacity: 0.9,
   },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginTop: -20,
+    marginHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+  },
   filtersContainer: {
     backgroundColor: "#ffffff",
-    padding: 20,
-    paddingBottom: 10,
+    padding: 15,
+    margin: 10,
+    marginBottom: 20,
+    borderRadius: 12,
+    elevation: 2,
   },
   searchBar: {
     marginBottom: 15,
@@ -504,9 +529,8 @@ const styles = StyleSheet.create({
   dateFilterChipText: {
     fontSize: 12,
   },
-  incomeList: {
+  scrollView: {
     flex: 1,
-    padding: 20,
   },
   emptyState: {
     alignItems: "center",
@@ -537,7 +561,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   incomeCard: {
-    marginBottom: 10,
+    margin: 10,
+    marginBottom: 15,
     elevation: 2,
     borderRadius: 8,
   },

@@ -20,6 +20,7 @@ import {
   Snackbar,
 } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   format,
   startOfWeek,
@@ -311,398 +312,414 @@ const HomeScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Dashboard</Text>
-          <Text style={styles.headerSubtitle}>
-            {format(new Date(), "EEEE, MMMM d, yyyy")}
-          </Text>
-        </View>
+    <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
+      {/* Sticky Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Dashboard</Text>
+        <Text style={styles.headerSubtitle}>
+          {format(new Date(), "EEEE, MMMM d, yyyy")}
+        </Text>
+      </View>
 
-        {/* Setup Account Button */}
-        <Card style={styles.setupCard}>
-          <Card.Content>
-            <View style={styles.setupHeader}>
-              <View style={styles.setupInfo}>
-                <Title style={styles.setupTitle}>⚙️ Account Setup</Title>
-                <Text style={styles.setupSubtitle}>
-                  Configure your payment frequency, amount, and tithing
-                  preferences
-                </Text>
-              </View>
-              <Button
-                mode="contained"
-                onPress={() => navigation.navigate("Onboarding")}
-                icon="account-cog"
-                buttonColor={theme.colors.secondary}
-                textColor="#FFFFFF"
-                compact
-              >
-                Setup
-              </Button>
-            </View>
-          </Card.Content>
-        </Card>
-
-        {/* User Guide */}
-        <Card style={styles.guideCard}>
-          <Card.Content>
-            <View style={styles.guideContainer}>
-              <MaterialIcons
-                name="info"
-                size={20}
-                color={theme.colors.primary}
-              />
-              <Text
-                style={[
-                  styles.guideText,
-                  { color: theme.colors.textSecondary },
-                ]}
-              >
-                💡 Click the{" "}
-                <Text
-                  style={[
-                    styles.guideHighlight,
-                    { color: theme.colors.accent },
-                  ]}
-                >
-                  + button
-                </Text>{" "}
-                at the bottom right to add new expenses
-              </Text>
-            </View>
-          </Card.Content>
-        </Card>
-
-        {/* Time Period Tabs */}
-        <View style={styles.tabContainer}>
-          {[
-            { key: "daily", label: "Daily", icon: "today" },
-            { key: "weekly", label: "Weekly", icon: "view-week" },
-            { key: "monthly", label: "Monthly", icon: "calendar-month" },
-            { key: "yearly", label: "Yearly", icon: "calendar" },
-          ].map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[
-                styles.tabButton,
-                activeTab === tab.key && styles.activeTabButton,
-              ]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <MaterialIcons
-                name={tab.icon}
-                size={20}
-                color={
-                  activeTab === tab.key ? "#ffffff" : theme.colors.textSecondary
-                }
-              />
-              <Text
-                style={[
-                  styles.tabLabel,
-                  activeTab === tab.key && styles.activeTabLabel,
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <Card style={styles.statCard}>
+      {/* Main Content Container - Gray Parent Card */}
+      <View style={styles.contentContainer}>
+        <ScrollView
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Setup Account Button */}
+          <Card style={styles.setupCard}>
             <Card.Content>
-              <Title style={styles.statTitle}>
-                {getCurrentPeriodLabel()} Expenses
-              </Title>
-              <Text style={styles.statAmount}>
-                ${getCurrentExpensesTotal().toFixed(2)}
-              </Text>
-              <Text style={styles.statSubtitle}>
-                {getCurrentExpenses().length} items
-              </Text>
+              <View style={styles.setupHeader}>
+                <View style={styles.setupInfo}>
+                  <Title style={styles.setupTitle}>⚙️ Account Setup</Title>
+                  <Text style={styles.setupSubtitle}>
+                    Configure your payment frequency, amount, and tithing
+                    preferences
+                  </Text>
+                </View>
+                <Button
+                  mode="contained"
+                  onPress={() => navigation.navigate("Onboarding")}
+                  icon="account-cog"
+                  buttonColor={theme.colors.secondary}
+                  textColor="#FFFFFF"
+                  compact
+                >
+                  Setup
+                </Button>
+              </View>
             </Card.Content>
           </Card>
 
-          <Card style={styles.statCard}>
+          {/* User Guide */}
+          <Card style={styles.guideCard}>
             <Card.Content>
-              <Title style={styles.statTitle}>Remaining</Title>
-              <Text
-                style={[
-                  styles.statAmount,
-                  {
-                    color:
-                      getCurrentBudgetRemaining() >= 0 ? "#4CAF50" : "#F44336",
-                  },
-                ]}
-              >
-                ${getCurrentBudgetRemaining().toFixed(2)}
-              </Text>
-              <Text style={styles.statSubtitle}>
-                Available{" "}
-                {activeTab === "daily"
-                  ? "today"
-                  : `this ${activeTab.slice(0, -2)}`}
-              </Text>
-            </Card.Content>
-          </Card>
-        </View>
-
-        {/* Budget Progress */}
-        <Card
-          style={[styles.budgetCard, { backgroundColor: theme.colors.surface }]}
-        >
-          <Card.Content>
-            <Title style={[styles.budgetTitle, { color: theme.colors.text }]}>
-              {getCurrentPeriodLabel()} Budget Progress
-            </Title>
-
-            {/* Current Period Budget */}
-            <View style={styles.budgetItem}>
-              <View style={styles.budgetHeader}>
-                <Text
-                  style={[
-                    styles.budgetLabel,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  {getCurrentPeriodLabel()} Budget
-                </Text>
-                <Text
-                  style={[styles.budgetProgress, { color: theme.colors.text }]}
-                >
-                  {Math.round(getCurrentBudgetProgress() * 100)}%
-                </Text>
-              </View>
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    {
-                      width: `${Math.min(getCurrentBudgetProgress() * 100, 100)}%`,
-                      backgroundColor:
-                        getCurrentBudgetStatus() === "critical"
-                          ? "#F44336"
-                          : getCurrentBudgetStatus() === "warning"
-                            ? "#FF9800"
-                            : "#4CAF50",
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
-
-        {/* Analytics Section */}
-        <Card
-          style={[
-            styles.analyticsCard,
-            { backgroundColor: theme.colors.surface },
-          ]}
-        >
-          <Card.Content>
-            <Title
-              style={[styles.analyticsTitle, { color: theme.colors.text }]}
-            >
-              📊 Analytics & Insights
-            </Title>
-
-            {/* Category Breakdown - Pie Chart */}
-            {getCurrentExpenses().length > 0 && (
-              <View style={styles.chartContainer}>
-                <Text
-                  style={[
-                    styles.chartLabel,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  {getCurrentPeriodLabel()} Expenses by Category
-                </Text>
-                <PieChart
-                  data={preparePieChartData(getCurrentExpenses())}
-                  width={width - 80}
-                  height={200}
-                  chartConfig={{
-                    backgroundColor: theme.colors.surface,
-                    backgroundGradientFrom: theme.colors.surface,
-                    backgroundGradientTo: theme.colors.surface,
-                    color: (opacity = 1) => `rgba(0, 137, 123, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(44, 62, 80, ${opacity})`,
-                  }}
-                  accessor="amount"
-                  backgroundColor="transparent"
-                  paddingLeft="15"
-                  absolute
-                />
-              </View>
-            )}
-
-            {/* Spending Trends - Bar Chart */}
-            {getCurrentExpenses().length > 0 && (
-              <View style={styles.chartContainer}>
-                <Text
-                  style={[
-                    styles.chartLabel,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  {getCurrentPeriodLabel()} Spending Trends
-                </Text>
-                <BarChart
-                  data={prepareBarChartData(getCurrentExpenses())}
-                  width={width - 80}
-                  height={200}
-                  chartConfig={{
-                    backgroundColor: theme.colors.surface,
-                    backgroundGradientFrom: theme.colors.surface,
-                    backgroundGradientTo: theme.colors.surface,
-                    decimalPlaces: 2,
-                    color: (opacity = 1) => `rgba(67, 160, 71, ${opacity})`,
-                  }}
-                  style={{
-                    marginVertical: 8,
-                    borderRadius: 16,
-                  }}
-                />
-              </View>
-            )}
-
-            {/* Quick Insights */}
-            <View style={styles.insightsContainer}>
-              <Text
-                style={[styles.insightsTitle, { color: theme.colors.text }]}
-              >
-                💡 Quick Insights
-              </Text>
-              <View style={styles.insightItem}>
+              <View style={styles.guideContainer}>
                 <MaterialIcons
-                  name="trending-up"
+                  name="info"
                   size={20}
                   color={theme.colors.primary}
                 />
                 <Text
                   style={[
-                    styles.insightText,
+                    styles.guideText,
                     { color: theme.colors.textSecondary },
                   ]}
                 >
-                  Top category:{" "}
-                  {getCurrentExpenses().length > 0
-                    ? Object.entries(
-                        getCurrentExpenses().reduce((acc, exp) => {
-                          acc[exp.category || "General"] =
-                            (acc[exp.category || "General"] || 0) + exp.amount;
-                          return acc;
-                        }, {})
-                      ).sort((a, b) => b[1] - a[1])[0]?.[0] || "None"
-                    : "None"}
+                  💡 Click the{" "}
+                  <Text
+                    style={[
+                      styles.guideHighlight,
+                      { color: theme.colors.accent },
+                    ]}
+                  >
+                    + button
+                  </Text>{" "}
+                  at the bottom right to add new expenses
                 </Text>
               </View>
-              <View style={styles.insightItem}>
+            </Card.Content>
+          </Card>
+
+          {/* Time Period Tabs */}
+          <View style={styles.tabContainer}>
+            {[
+              { key: "daily", label: "Daily", icon: "today" },
+              { key: "weekly", label: "Weekly", icon: "view-week" },
+              { key: "monthly", label: "Monthly", icon: "calendar-month" },
+              { key: "yearly", label: "Yearly", icon: "calendar" },
+            ].map((tab) => (
+              <TouchableOpacity
+                key={tab.key}
+                style={[
+                  styles.tabButton,
+                  activeTab === tab.key && styles.activeTabButton,
+                ]}
+                onPress={() => setActiveTab(tab.key)}
+              >
                 <MaterialIcons
-                  name="calendar-today"
+                  name={tab.icon}
                   size={20}
-                  color={theme.colors.secondary}
+                  color={
+                    activeTab === tab.key
+                      ? "#ffffff"
+                      : theme.colors.textSecondary
+                  }
                 />
                 <Text
                   style={[
-                    styles.insightText,
-                    { color: theme.colors.textSecondary },
+                    styles.tabLabel,
+                    activeTab === tab.key && styles.activeTabLabel,
                   ]}
                 >
-                  Average{" "}
-                  {activeTab === "daily"
-                    ? "hourly"
-                    : activeTab === "weekly"
-                      ? "daily"
-                      : activeTab === "monthly"
-                        ? "daily"
-                        : "daily"}{" "}
-                  spending: $
-                  {getCurrentExpenses().length > 0
-                    ? (
-                        calculateTotal(getCurrentExpenses()) /
-                        getCurrentPeriodDays()
-                      ).toFixed(2)
-                    : "0.00"}
+                  {tab.label}
                 </Text>
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        {/* Current Period Expenses */}
-        <Card style={styles.expensesCard}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>
-              {getCurrentPeriodLabel()} Expenses
-            </Title>
-            {getCurrentExpenses().length === 0 ? (
-              <Text style={styles.noExpenses}>
-                No expenses logged{" "}
-                {activeTab === "daily"
-                  ? "today"
-                  : `this ${activeTab.slice(0, -2)}`}
-              </Text>
-            ) : (
-              getCurrentExpenses().map((expense) => (
-                <View key={expense.id} style={styles.expenseItem}>
-                  <View style={styles.expenseLeft}>
-                    <MaterialIcons
-                      name={getCategoryIcon(expense.category)}
-                      size={24}
-                      color="#2196F3"
-                      style={styles.expenseIcon}
-                    />
-                    <View>
-                      <Text style={styles.expenseDescription}>
-                        {expense.description}
-                      </Text>
-                      <Text style={styles.expenseCategory}>
-                        {expense.category}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.expenseAmount}>
-                    ${expense.amount.toFixed(2)}
+          {/* Quick Stats */}
+          <View style={styles.statsContainer}>
+            <Card style={styles.statCard}>
+              <Card.Content>
+                <Title style={styles.statTitle}>
+                  {getCurrentPeriodLabel()} Expenses
+                </Title>
+                <Text style={styles.statAmount}>
+                  ${getCurrentExpensesTotal().toFixed(2)}
+                </Text>
+                <Text style={styles.statSubtitle}>
+                  {getCurrentExpenses().length} items
+                </Text>
+              </Card.Content>
+            </Card>
+
+            <Card style={styles.statCard}>
+              <Card.Content>
+                <Title style={styles.statTitle}>Remaining</Title>
+                <Text
+                  style={[
+                    styles.statAmount,
+                    {
+                      color:
+                        getCurrentBudgetRemaining() >= 0
+                          ? "#4CAF50"
+                          : "#F44336",
+                    },
+                  ]}
+                >
+                  ${getCurrentBudgetRemaining().toFixed(2)}
+                </Text>
+                <Text style={styles.statSubtitle}>
+                  Available{" "}
+                  {activeTab === "daily"
+                    ? "today"
+                    : `this ${activeTab.slice(0, -2)}`}
+                </Text>
+              </Card.Content>
+            </Card>
+          </View>
+
+          {/* Budget Progress */}
+          <Card
+            style={[
+              styles.budgetCard,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
+            <Card.Content>
+              <Title style={[styles.budgetTitle, { color: theme.colors.text }]}>
+                {getCurrentPeriodLabel()} Budget Progress
+              </Title>
+
+              {/* Current Period Budget */}
+              <View style={styles.budgetItem}>
+                <View style={styles.budgetHeader}>
+                  <Text
+                    style={[
+                      styles.budgetLabel,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    {getCurrentPeriodLabel()} Budget
+                  </Text>
+                  <Text
+                    style={[
+                      styles.budgetProgress,
+                      { color: theme.colors.text },
+                    ]}
+                  >
+                    {Math.round(getCurrentBudgetProgress() * 100)}%
                   </Text>
                 </View>
-              ))
-            )}
-          </Card.Content>
-        </Card>
+                <View style={styles.progressBarContainer}>
+                  <View
+                    style={[
+                      styles.progressBar,
+                      {
+                        width: `${Math.min(getCurrentBudgetProgress() * 100, 100)}%`,
+                        backgroundColor:
+                          getCurrentBudgetStatus() === "critical"
+                            ? "#F44336"
+                            : getCurrentBudgetStatus() === "warning"
+                              ? "#FF9800"
+                              : "#4CAF50",
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            </Card.Content>
+          </Card>
 
-        {/* Current Period Summary */}
-        <Card style={styles.summaryCard}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>
-              {getCurrentPeriodLabel()} Summary
-            </Title>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Expenses:</Text>
-              <Text style={styles.summaryValue}>
-                ${getCurrentExpensesTotal().toFixed(2)}
-              </Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Days Tracked:</Text>
-              <Text style={styles.summaryValue}>
-                {new Set(getCurrentExpenses().map((e) => e.date)).size}/
-                {getCurrentPeriodDays()}
-              </Text>
-            </View>
-          </Card.Content>
-        </Card>
-      </ScrollView>
+          {/* Analytics Section */}
+          <Card
+            style={[
+              styles.analyticsCard,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
+            <Card.Content>
+              <Title
+                style={[styles.analyticsTitle, { color: theme.colors.text }]}
+              >
+                📊 Analytics & Insights
+              </Title>
+
+              {/* Category Breakdown - Pie Chart */}
+              {getCurrentExpenses().length > 0 && (
+                <View style={styles.chartContainer}>
+                  <Text
+                    style={[
+                      styles.chartLabel,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    {getCurrentPeriodLabel()} Expenses by Category
+                  </Text>
+                  <PieChart
+                    data={preparePieChartData(getCurrentExpenses())}
+                    width={width - 80}
+                    height={200}
+                    chartConfig={{
+                      backgroundColor: theme.colors.surface,
+                      backgroundGradientFrom: theme.colors.surface,
+                      backgroundGradientTo: theme.colors.surface,
+                      color: (opacity = 1) => `rgba(0, 137, 123, ${opacity})`,
+                      labelColor: (opacity = 1) =>
+                        `rgba(44, 62, 80, ${opacity})`,
+                    }}
+                    accessor="amount"
+                    backgroundColor="transparent"
+                    paddingLeft="15"
+                    absolute
+                  />
+                </View>
+              )}
+
+              {/* Spending Trends - Bar Chart */}
+              {getCurrentExpenses().length > 0 && (
+                <View style={styles.chartContainer}>
+                  <Text
+                    style={[
+                      styles.chartLabel,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    {getCurrentPeriodLabel()} Spending Trends
+                  </Text>
+                  <BarChart
+                    data={prepareBarChartData(getCurrentExpenses())}
+                    width={width - 80}
+                    height={200}
+                    chartConfig={{
+                      backgroundColor: theme.colors.surface,
+                      backgroundGradientFrom: theme.colors.surface,
+                      backgroundGradientTo: theme.colors.surface,
+                      decimalPlaces: 2,
+                      color: (opacity = 1) => `rgba(67, 160, 71, ${opacity})`,
+                    }}
+                    style={{
+                      marginVertical: 8,
+                      borderRadius: 16,
+                    }}
+                  />
+                </View>
+              )}
+
+              {/* Quick Insights */}
+              <View style={styles.insightsContainer}>
+                <Text
+                  style={[styles.insightsTitle, { color: theme.colors.text }]}
+                >
+                  💡 Quick Insights
+                </Text>
+                <View style={styles.insightItem}>
+                  <MaterialIcons
+                    name="trending-up"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.insightText,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    Top category:{" "}
+                    {getCurrentExpenses().length > 0
+                      ? Object.entries(
+                          getCurrentExpenses().reduce((acc, exp) => {
+                            acc[exp.category || "General"] =
+                              (acc[exp.category || "General"] || 0) +
+                              exp.amount;
+                            return acc;
+                          }, {})
+                        ).sort((a, b) => b[1] - a[1])[0]?.[0] || "None"
+                      : "None"}
+                  </Text>
+                </View>
+                <View style={styles.insightItem}>
+                  <MaterialIcons
+                    name="calendar-today"
+                    size={20}
+                    color={theme.colors.secondary}
+                  />
+                  <Text
+                    style={[
+                      styles.insightText,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    Average{" "}
+                    {activeTab === "daily"
+                      ? "hourly"
+                      : activeTab === "weekly"
+                        ? "daily"
+                        : activeTab === "monthly"
+                          ? "daily"
+                          : "daily"}{" "}
+                    spending: $
+                    {getCurrentExpenses().length > 0
+                      ? (
+                          calculateTotal(getCurrentExpenses()) /
+                          getCurrentPeriodDays()
+                        ).toFixed(2)
+                      : "0.00"}
+                  </Text>
+                </View>
+              </View>
+            </Card.Content>
+          </Card>
+
+          {/* Current Period Expenses */}
+          <Card style={styles.expensesCard}>
+            <Card.Content>
+              <Title style={styles.cardTitle}>
+                {getCurrentPeriodLabel()} Expenses
+              </Title>
+              {getCurrentExpenses().length === 0 ? (
+                <Text style={styles.noExpenses}>
+                  No expenses logged{" "}
+                  {activeTab === "daily"
+                    ? "today"
+                    : `this ${activeTab.slice(0, -2)}`}
+                </Text>
+              ) : (
+                getCurrentExpenses().map((expense) => (
+                  <View key={expense.id} style={styles.expenseItem}>
+                    <View style={styles.expenseLeft}>
+                      <MaterialIcons
+                        name={getCategoryIcon(expense.category)}
+                        size={24}
+                        color="#2196F3"
+                        style={styles.expenseIcon}
+                      />
+                      <View>
+                        <Text style={styles.expenseDescription}>
+                          {expense.description}
+                        </Text>
+                        <Text style={styles.expenseCategory}>
+                          {expense.category}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.expenseAmount}>
+                      ${expense.amount.toFixed(2)}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </Card.Content>
+          </Card>
+
+          {/* Current Period Summary */}
+          <Card style={styles.summaryCard}>
+            <Card.Content>
+              <Title style={styles.cardTitle}>
+                {getCurrentPeriodLabel()} Summary
+              </Title>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Total Expenses:</Text>
+                <Text style={styles.summaryValue}>
+                  ${getCurrentExpensesTotal().toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Days Tracked:</Text>
+                <Text style={styles.summaryValue}>
+                  {new Set(getCurrentExpenses().map((e) => e.date)).size}/
+                  {getCurrentPeriodDays()}
+                </Text>
+              </View>
+            </Card.Content>
+          </Card>
+        </ScrollView>
+      </View>
 
       {/* Add Expense FAB */}
       <FAB
@@ -803,7 +820,7 @@ const HomeScreen = () => {
       >
         {snackbarMessage}
       </Snackbar>
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -816,7 +833,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    backgroundColor: "#2196F3",
+    backgroundColor: "transparent",
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -832,10 +849,27 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     opacity: 0.9,
   },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginTop: -20,
+    marginHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+  },
   guideCard: {
-    margin: 20,
-    marginTop: 10,
-    marginBottom: 10,
+    margin: 10,
+    marginTop: 5,
+    marginBottom: 15,
     elevation: 2,
     borderRadius: 12,
     backgroundColor: "#f8f9fa",
@@ -857,7 +891,7 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: "row",
     backgroundColor: "#ffffff",
-    marginHorizontal: 20,
+    marginHorizontal: 10,
     marginBottom: 10,
     borderRadius: 12,
     elevation: 2,
@@ -874,20 +908,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   activeTabButton: {
-    backgroundColor: "#00897B", // Use the actual color value
+    backgroundColor: "#00897B", 
   },
   tabLabel: {
     fontSize: 12,
     fontWeight: "600",
     marginLeft: 6,
-    color: "#6C757D", // Use the actual color value
+    color: "#6C757D", 
   },
   activeTabLabel: {
     color: "#ffffff",
   },
   statsContainer: {
     flexDirection: "row",
-    padding: 20,
+    padding: 10,
     gap: 15,
   },
   statCard: {
@@ -912,7 +946,7 @@ const styles = StyleSheet.create({
   },
   expensesCard: {
     margin: 20,
-    marginTop: 0,
+    marginTop: 5,
     elevation: 4,
     borderRadius: 12,
   },
@@ -961,7 +995,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     margin: 20,
-    marginTop: 0,
+    marginTop: 5,
     elevation: 4,
     borderRadius: 12,
   },
@@ -1014,7 +1048,7 @@ const styles = StyleSheet.create({
   },
   budgetCard: {
     margin: 20,
-    marginBottom: 10,
+    marginBottom: 15,
     elevation: 4,
     borderRadius: 12,
   },
@@ -1052,9 +1086,9 @@ const styles = StyleSheet.create({
   },
   // Setup card styles
   setupCard: {
-    margin: 20,
-    marginTop: 10,
-    marginBottom: 10,
+    margin: 10,
+    marginTop: 5,
+    marginBottom: 15,
     elevation: 4,
     borderRadius: 12,
     backgroundColor: "#f8f9fa",
@@ -1082,7 +1116,7 @@ const styles = StyleSheet.create({
   // Analytics styles
   analyticsCard: {
     margin: 20,
-    marginBottom: 10,
+    marginBottom: 15,
     elevation: 4,
     borderRadius: 12,
   },

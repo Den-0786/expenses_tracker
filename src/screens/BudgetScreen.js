@@ -11,6 +11,7 @@ import {
   Snackbar,
 } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../context/ThemeContext";
 import { useBudget } from "../context/BudgetContext";
 
@@ -199,227 +200,254 @@ const BudgetScreen = () => {
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: "#2E7D32" }]}>
+    <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
+      {/* Sticky Header */}
+      <View style={styles.header}>
         <Text style={styles.headerTitle}>Budget Management</Text>
         <Text style={styles.headerSubtitle}>Track your spending limits</Text>
       </View>
 
-      {/* Budget Overview */}
-      <Card
-        style={[styles.overviewCard, { backgroundColor: theme.colors.surface }]}
-      >
-        <Card.Content>
-          <View style={styles.overviewHeader}>
-            <Title style={[styles.overviewTitle, { color: theme.colors.text }]}>
-              Budget Overview
-            </Title>
-            <Button
-              mode={editMode ? "contained" : "outlined"}
-              onPress={() => setEditMode(!editMode)}
-              compact
-            >
-              {editMode ? "Save" : "Edit"}
-            </Button>
-          </View>
-
-          {editMode ? (
-            <View>
-              <TextInput
-                label="Daily Budget"
-                value={editForm.daily}
-                onChangeText={(text) =>
-                  setEditForm({ ...editForm, daily: text })
-                }
-                keyboardType="numeric"
-                mode="outlined"
-                style={styles.input}
-                placeholder="0.00"
-                left={<TextInput.Affix text="$" />}
-              />
-              <TextInput
-                label="Weekly Budget"
-                value={editForm.weekly}
-                onChangeText={(text) =>
-                  setEditForm({ ...editForm, weekly: text })
-                }
-                keyboardType="numeric"
-                mode="outlined"
-                style={styles.input}
-                placeholder="0.00"
-                left={<TextInput.Affix text="$" />}
-              />
-              <TextInput
-                label="Monthly Budget"
-                value={editForm.monthly}
-                onChangeText={(text) =>
-                  setEditForm({ ...editForm, monthly: text })
-                }
-                keyboardType="numeric"
-                mode="outlined"
-                style={styles.input}
-                placeholder="0.00"
-                left={<TextInput.Affix text="$" />}
-              />
-              <TextInput
-                label="Yearly Budget"
-                value={editForm.yearly}
-                onChangeText={(text) =>
-                  setEditForm({ ...editForm, yearly: text })
-                }
-                keyboardType="numeric"
-                mode="outlined"
-                style={styles.input}
-                placeholder="0.00"
-                left={<TextInput.Affix text="$" />}
-              />
-              <View style={styles.editButtons}>
-                <Button
-                  mode="outlined"
-                  onPress={() => {
-                    setEditMode(false);
-                    setEditForm({
-                      daily: budgets.daily.toString(),
-                      weekly: budgets.weekly.toString(),
-                      monthly: budgets.monthly.toString(),
-                      yearly: budgets.yearly.toString(),
-                    });
-                  }}
-                  style={styles.editButton}
+      {/* Main Content Container - Gray Parent Card */}
+      <View style={styles.contentContainer}>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Budget Overview */}
+          <Card
+            style={[
+              styles.overviewCard,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
+            <Card.Content>
+              <View style={styles.overviewHeader}>
+                <Title
+                  style={[styles.overviewTitle, { color: theme.colors.text }]}
                 >
-                  Cancel
-                </Button>
+                  Budget Overview
+                </Title>
                 <Button
-                  mode="contained"
-                  onPress={handleSaveBudgets}
-                  style={styles.editButton}
+                  mode={editMode ? "contained" : "outlined"}
+                  onPress={() => setEditMode(!editMode)}
+                  compact
                 >
-                  Save Changes
+                  {editMode ? "Save" : "Edit"}
                 </Button>
               </View>
-            </View>
-          ) : (
-            <View style={styles.overviewStats}>
-              {/* First Row: Daily and Weekly */}
-              <View style={styles.statRow}>
-                <View style={styles.statItem}>
-                  <Text
-                    style={[styles.statValue, { color: theme.colors.primary }]}
-                  >
-                    ${budgets.daily.toFixed(2)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.statLabel,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
-                    Daily
-                  </Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text
-                    style={[styles.statValue, { color: theme.colors.primary }]}
-                  >
-                    ${budgets.weekly.toFixed(2)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.statLabel,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
-                    Weekly
-                  </Text>
-                </View>
-              </View>
 
-              {/* Second Row: Monthly and Yearly */}
-              <View style={styles.statRow}>
-                <View style={styles.statItem}>
-                  <Text
-                    style={[styles.statValue, { color: theme.colors.primary }]}
-                  >
-                    ${budgets.monthly.toFixed(2)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.statLabel,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
-                    Monthly
-                  </Text>
+              {editMode ? (
+                <View>
+                  <TextInput
+                    label="Daily Budget"
+                    value={editForm.daily}
+                    onChangeText={(text) =>
+                      setEditForm({ ...editForm, daily: text })
+                    }
+                    keyboardType="numeric"
+                    mode="outlined"
+                    style={styles.input}
+                    placeholder="0.00"
+                    left={<TextInput.Affix text="$" />}
+                  />
+                  <TextInput
+                    label="Weekly Budget"
+                    value={editForm.weekly}
+                    onChangeText={(text) =>
+                      setEditForm({ ...editForm, weekly: text })
+                    }
+                    keyboardType="numeric"
+                    mode="outlined"
+                    style={styles.input}
+                    placeholder="0.00"
+                    left={<TextInput.Affix text="$" />}
+                  />
+                  <TextInput
+                    label="Monthly Budget"
+                    value={editForm.monthly}
+                    onChangeText={(text) =>
+                      setEditForm({ ...editForm, monthly: text })
+                    }
+                    keyboardType="numeric"
+                    mode="outlined"
+                    style={styles.input}
+                    placeholder="0.00"
+                    left={<TextInput.Affix text="$" />}
+                  />
+                  <TextInput
+                    label="Yearly Budget"
+                    value={editForm.yearly}
+                    onChangeText={(text) =>
+                      setEditForm({ ...editForm, yearly: text })
+                    }
+                    keyboardType="numeric"
+                    mode="outlined"
+                    style={styles.input}
+                    placeholder="0.00"
+                    left={<TextInput.Affix text="$" />}
+                  />
+                  <View style={styles.editButtons}>
+                    <Button
+                      mode="outlined"
+                      onPress={() => {
+                        setEditMode(false);
+                        setEditForm({
+                          daily: budgets.daily.toString(),
+                          weekly: budgets.weekly.toString(),
+                          monthly: budgets.monthly.toString(),
+                          yearly: budgets.yearly.toString(),
+                        });
+                      }}
+                      style={styles.editButton}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      mode="contained"
+                      onPress={handleSaveBudgets}
+                      style={styles.editButton}
+                    >
+                      Save Changes
+                    </Button>
+                  </View>
                 </View>
-                <View style={styles.statItem}>
-                  <Text
-                    style={[styles.statValue, { color: theme.colors.primary }]}
-                  >
-                    ${budgets.yearly.toFixed(2)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.statLabel,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
-                    Yearly
-                  </Text>
+              ) : (
+                <View style={styles.overviewStats}>
+                  {/* First Row: Daily and Weekly */}
+                  <View style={styles.statRow}>
+                    <View style={styles.statItem}>
+                      <Text
+                        style={[
+                          styles.statValue,
+                          { color: theme.colors.primary },
+                        ]}
+                      >
+                        ${budgets.daily.toFixed(2)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statLabel,
+                          { color: theme.colors.textSecondary },
+                        ]}
+                      >
+                        Daily
+                      </Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text
+                        style={[
+                          styles.statValue,
+                          { color: theme.colors.primary },
+                        ]}
+                      >
+                        ${budgets.weekly.toFixed(2)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statLabel,
+                          { color: theme.colors.textSecondary },
+                        ]}
+                      >
+                        Weekly
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Second Row: Monthly and Yearly */}
+                  <View style={styles.statRow}>
+                    <View style={styles.statItem}>
+                      <Text
+                        style={[
+                          styles.statValue,
+                          { color: theme.colors.primary },
+                        ]}
+                      >
+                        ${budgets.monthly.toFixed(2)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statLabel,
+                          { color: theme.colors.textSecondary },
+                        ]}
+                      >
+                        Monthly
+                      </Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text
+                        style={[
+                          styles.statValue,
+                          { color: theme.colors.primary },
+                        ]}
+                      >
+                        ${budgets.yearly.toFixed(2)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statLabel,
+                          { color: theme.colors.textSecondary },
+                        ]}
+                      >
+                        Yearly
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
-          )}
-        </Card.Content>
-      </Card>
+              )}
+            </Card.Content>
+          </Card>
 
-      {/* Individual Budget Cards */}
-      {renderBudgetCard("daily", "Daily Budget", "today")}
-      {renderBudgetCard("weekly", "Weekly Budget", "view-week")}
-      {renderBudgetCard("monthly", "Monthly Budget", "calendar-month")}
-      {renderBudgetCard("yearly", "Yearly Budget", "calendar")}
+          {/* Individual Budget Cards */}
+          {renderBudgetCard("daily", "Daily Budget", "today")}
+          {renderBudgetCard("weekly", "Weekly Budget", "view-week")}
+          {renderBudgetCard("monthly", "Monthly Budget", "calendar-month")}
+          {renderBudgetCard("yearly", "Yearly Budget", "calendar")}
 
-      {/* Budget Tips */}
-      <Card
-        style={[styles.tipsCard, { backgroundColor: theme.colors.surface }]}
-      >
-        <Card.Content>
-          <Title style={[styles.tipsTitle, { color: theme.colors.text }]}>
-            Budget Tips
-          </Title>
-          <List.Item
-            title="Set realistic budgets"
-            description="Start with your current spending and adjust gradually"
-            left={(props) => (
-              <List.Icon
-                {...props}
-                icon="lightbulb"
-                color={theme.colors.primary}
+          {/* Budget Tips */}
+          <Card
+            style={[styles.tipsCard, { backgroundColor: theme.colors.surface }]}
+          >
+            <Card.Content>
+              <Title style={[styles.tipsTitle, { color: theme.colors.text }]}>
+                Budget Tips
+              </Title>
+              <List.Item
+                title="Set realistic budgets"
+                description="Start with your current spending and adjust gradually"
+                left={(props) => (
+                  <List.Icon
+                    {...props}
+                    icon="lightbulb"
+                    color={theme.colors.primary}
+                  />
+                )}
               />
-            )}
-          />
-          <List.Item
-            title="Track regularly"
-            description="Monitor your progress daily to stay on track"
-            left={(props) => (
-              <List.Icon
-                {...props}
-                icon="chart-line"
-                color={theme.colors.primary}
+              <List.Item
+                title="Review regularly"
+                description="Check your progress weekly and adjust as needed"
+                left={(props) => (
+                  <List.Icon
+                    {...props}
+                    icon="calendar-check"
+                    color={theme.colors.primary}
+                  />
+                )}
               />
-            )}
-          />
-          <List.Item
-            title="Adjust as needed"
-            description="Review and adjust budgets monthly based on your needs"
-            left={(props) => (
-              <List.Icon {...props} icon="tune" color={theme.colors.primary} />
-            )}
-          />
-        </Card.Content>
-      </Card>
+              <List.Item
+                title="Use categories"
+                description="Break down your budget by spending categories"
+                left={(props) => (
+                  <List.Icon
+                    {...props}
+                    icon="format-list-bulleted"
+                    color={theme.colors.primary}
+                  />
+                )}
+              />
+            </Card.Content>
+          </Card>
+        </ScrollView>
+      </View>
 
       <Snackbar
         visible={snackbarVisible}
@@ -440,7 +468,7 @@ const BudgetScreen = () => {
       >
         {snackbarMessage}
       </Snackbar>
-    </ScrollView>
+    </LinearGradient>
   );
 };
 
@@ -449,24 +477,45 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    backgroundColor: "transparent",
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: 30,
     paddingHorizontal: 20,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
     color: "#ffffff",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 16,
     color: "#ffffff",
     opacity: 0.9,
   },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginTop: -20,
+    marginHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  scrollView: {
+    flex: 1,
+  },
   overviewCard: {
-    margin: 20,
-    marginBottom: 10,
+    margin: 10,
+    marginBottom: 15,
     elevation: 4,
     borderRadius: 12,
     shadowColor: "#000",
@@ -526,8 +575,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   budgetCard: {
-    margin: 20,
-    marginBottom: 10,
+    margin: 10,
+    marginBottom: 15,
     elevation: 4,
     borderRadius: 12,
   },
@@ -599,7 +648,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   tipsCard: {
-    margin: 20,
+    margin: 10,
     marginBottom: 20,
     elevation: 4,
     borderRadius: 12,
