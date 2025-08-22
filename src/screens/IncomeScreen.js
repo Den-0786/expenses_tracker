@@ -84,29 +84,9 @@ const IncomeScreen = () => {
           startDate = "2020-01-01"; // All time
       }
 
-      // For now, we'll use mock data since we don't have getIncomeByDateRange yet
-      const mockIncome = [
-        {
-          id: 1,
-          amount: 5000,
-          description: "Monthly Salary",
-          category: "Salary",
-          source: "Company Inc.",
-          date: "2024-01-15",
-          created_at: "2024-01-15T10:00:00Z",
-        },
-        {
-          id: 2,
-          amount: 500,
-          description: "Freelance Project",
-          category: "Freelance",
-          source: "Client ABC",
-          date: "2024-01-20",
-          created_at: "2024-01-20T14:00:00Z",
-        },
-      ];
-
-      setIncome(mockIncome.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      // TODO: Implement getIncomeByDateRange in DatabaseContext
+      // For now, set empty array until database function is available
+      setIncome([]);
     } catch (error) {
       console.error("Error loading income:", error);
     }

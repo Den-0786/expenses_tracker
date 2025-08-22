@@ -3,7 +3,6 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { useAuth } from "../context/AuthContext";
 
 import SplashScreen from "../screens/SplashScreen";
-import AuthScreen from "../screens/AuthScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import SignInScreen from "../screens/SignInScreen";
 import OnboardingScreen from "../screens/OnboardingScreen";
@@ -18,7 +17,7 @@ const AuthNavigator = () => {
   const getInitialRoute = () => {
     if (isLoading) return "Splash";
     // Always require authentication first
-    if (!isAuthenticated) return "Auth";
+    if (!isAuthenticated) return "Splash";
     // After authentication, check onboarding
     if (!hasCompletedOnboarding) return "Onboarding";
     // Finally, main app
@@ -31,7 +30,6 @@ const AuthNavigator = () => {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="Splash" component={SplashScreen} />
-      <Stack.Screen name="Auth" component={AuthScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="SignIn" component={SignInScreen} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />

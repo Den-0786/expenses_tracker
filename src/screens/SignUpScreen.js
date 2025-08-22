@@ -12,7 +12,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 
 const SignUpScreen = ({ navigation }) => {
-  const [authMethod, setAuthMethod] = useState("gmail"); // 'gmail' or 'apple'
+  const [authMethod, setAuthMethod] = useState("gmail");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +46,6 @@ const SignUpScreen = ({ navigation }) => {
     try {
       const result = await signUp(username.trim(), authMethod, email.trim());
       if (result.success) {
-        // Navigate to onboarding
         navigation.replace("Onboarding");
       } else {
         setError(result.error || "Sign up failed. Please try again.");
@@ -152,7 +151,7 @@ const SignUpScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Username</Text>
+              {/* <Text style={styles.label}>Username</Text> */}
               <TextInput
                 mode="outlined"
                 value={username}
@@ -173,7 +172,7 @@ const SignUpScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
+              {/* <Text style={styles.label}>Email</Text> */}
               <TextInput
                 mode="outlined"
                 value={email}
@@ -269,14 +268,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 25,
-    padding: 3,
+    padding: 1,
     marginBottom: 10,
   },
   toggleOption: {
     flex: 1,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
     paddingHorizontal: 15,
+    gap: 8,
   },
   toggleOptionActive: {
     backgroundColor: "rgba(255,255,255,0.2)",
@@ -286,7 +288,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     color: "#BDBDBD",
-    marginTop: 3,
   },
   toggleTextActive: {
     color: "#FFFFFF",
@@ -300,11 +301,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
   input: {
     backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 12,
+    borderRadius: 30,
   },
   errorText: {
     color: "#FF6B6B",
@@ -322,15 +323,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   footer: {
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 25,
+    justifyContent: "center",
+    marginTop: -30,
     marginBottom: 30,
   },
   footerText: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#FFFFFF",
     opacity: 0.8,
-    marginBottom: 8,
+    marginBottom: -3,
   },
   linkText: {
     fontSize: 14,

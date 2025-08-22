@@ -10,7 +10,6 @@ import { AuthProvider } from "./src/context/AuthContext";
 import { DatabaseProvider } from "./src/context/DatabaseContext";
 import { NotificationProvider } from "./src/context/NotificationContext";
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
-import { BudgetProvider } from "./src/context/BudgetContext";
 import { SecurityProvider } from "./src/context/SecurityContext";
 import { SecurityNoticeProvider } from "./src/context/SecurityNoticeContext";
 
@@ -35,16 +34,14 @@ const AppContent = () => {
     <PaperProvider theme={theme}>
       <DatabaseProvider>
         <NotificationProvider>
-          <BudgetProvider>
-            <SecurityProvider>
-              <SecurityNoticeProvider>
-                <NavigationContainer>
-                  <StatusBar style="auto" />
-                  <AuthNavigator />
-                </NavigationContainer>
-              </SecurityNoticeProvider>
-            </SecurityProvider>
-          </BudgetProvider>
+          <SecurityProvider>
+            <SecurityNoticeProvider>
+              <NavigationContainer>
+                <StatusBar style="auto" />
+                <AuthNavigator />
+              </NavigationContainer>
+            </SecurityNoticeProvider>
+          </SecurityProvider>
         </NotificationProvider>
       </DatabaseProvider>
     </PaperProvider>

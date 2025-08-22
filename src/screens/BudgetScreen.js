@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import {
   Card,
@@ -13,18 +13,24 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../context/ThemeContext";
-import { useBudget } from "../context/BudgetContext";
+import { useDatabase } from "../context/DatabaseContext";
 
 const BudgetScreen = () => {
   const { theme, isDarkMode } = useTheme();
-  const {
-    budgets,
-    currentSpending,
-    setBudget,
-    getBudgetProgress,
-    getBudgetStatus,
-    getRemainingBudget,
-  } = useBudget();
+  const { getAllBudgets, saveBudget, getExpensesByDateRange } = useDatabase();
+
+  const [budgets, setBudgets] = useState({
+    daily: 0,
+    weekly: 0,
+    monthly: 0,
+    yearly: 0,
+  });
+  const [currentSpending, setCurrentSpending] = useState({
+    daily: 0,
+    weekly: 0,
+    monthly: 0,
+    yearly: 0,
+  });
 
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -37,6 +43,77 @@ const BudgetScreen = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarType, setSnackbarType] = useState("success");
 
+  useEffect(() => {
+    loadBudgets();
+    calculateCurrentSpending();
+  }, []);
+
+  const loadBudgets = async () => {
+    try {
+      const savedBudgets = await getAllBudgets();
+      setBudgets(savedBudgets);
+    } catch (error) {
+      console.error("Error loading budgets:", error);
+    }
+  };
+
+  const calculateCurrentSpending = async () => {
+    try {
+      const now = new Date();
+
+      // Daily spending
+      const today = now.toISOString().split("T")[0];
+      const todayExpenses = await getExpensesByDateRange(today, today);
+      const dailyTotal = todayExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      // Weekly spending
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
+      const weekExpenses = await getExpensesByDateRange(
+        weekStart.toISOString().split("T")[0],
+        now.toISOString().split("T")[0]
+      );
+      const weeklyTotal = weekExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      // Monthly spending
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthExpenses = await getExpensesByDateRange(
+        monthStart.toISOString().split("T")[0],
+        now.toISOString().split("T")[0]
+      );
+      const monthlyTotal = monthExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      // Yearly spending
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const yearExpenses = await getExpensesByDateRange(
+        yearStart.toISOString().split("T")[0],
+        now.toISOString().split("T")[0]
+      );
+      const yearlyTotal = yearExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      setCurrentSpending({
+        daily: dailyTotal,
+        weekly: weeklyTotal,
+        monthly: monthlyTotal,
+        yearly: yearlyTotal,
+      });
+    } catch (error) {
+      console.error("Error calculating current spending:", error);
+    }
+  };
+
   const showSnackbar = (message, type = "info") => {
     setSnackbarMessage(message);
     setSnackbarType(type);
@@ -47,18 +124,19 @@ const BudgetScreen = () => {
     setSnackbarVisible(false);
   };
 
-  const handleSaveBudgets = () => {
+  const handleSaveBudgets = async () => {
     try {
       const daily = parseFloat(editForm.daily) || 0;
       const weekly = parseFloat(editForm.weekly) || 0;
       const monthly = parseFloat(editForm.monthly) || 0;
       const yearly = parseFloat(editForm.yearly) || 0;
 
-      setBudget("daily", daily);
-      setBudget("weekly", weekly);
-      setBudget("monthly", monthly);
-      setBudget("yearly", yearly);
+      await saveBudget("daily", daily);
+      await saveBudget("weekly", weekly);
+      await saveBudget("monthly", monthly);
+      await saveBudget("yearly", yearly);
 
+      setBudgets({ daily, weekly, monthly, yearly });
       setEditMode(false);
       showSnackbar("Budgets updated successfully!", "success");
     } catch (error) {
@@ -86,6 +164,27 @@ const BudgetScreen = () => {
       default:
         return "check-circle";
     }
+  };
+
+  const getBudgetProgress = (period) => {
+    const budget = budgets[period];
+    const spending = currentSpending[period];
+
+    if (budget === 0) return 0;
+    return Math.min(spending / budget, 1);
+  };
+
+  const getBudgetStatus = (period) => {
+    const progress = getBudgetProgress(period);
+    const alerts = { warning: 0.8, critical: 0.95 };
+
+    if (progress >= alerts.critical) return "critical";
+    if (progress >= alerts.warning) return "warning";
+    return "normal";
+  };
+
+  const getRemainingBudget = (period) => {
+    return Math.max(budgets[period] - currentSpending[period], 0);
   };
 
   const renderBudgetCard = (period, title, icon) => {

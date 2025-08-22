@@ -13,26 +13,25 @@ export const useSecurity = () => {
 };
 
 export const SecurityProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Default to true (no security)
-  const [isLocked, setIsLocked] = useState(false); // Default to false (no security)
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isLocked, setIsLocked] = useState(false);
   const [pin, setPin] = useState(null);
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
-  const [isSecurityEnabled, setIsSecurityEnabled] = useState(false); // NEW: Master security toggle
+  const [isSecurityEnabled, setIsSecurityEnabled] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutUntil, setLockoutUntil] = useState(null);
+  const [autoLockEnabled, setAutoLockEnabled] = useState(true);
+  const [autoLockTimeout, setAutoLockTimeout] = useState(5); // 5 minutes
 
-  // Check if biometric authentication is available
   useEffect(() => {
     checkBiometricAvailability();
   }, []);
 
-  // Load security settings on mount
   useEffect(() => {
     loadSecuritySettings();
   }, []);
 
-  // Check if app should be locked on app start (only if security is enabled)
   useEffect(() => {
     if (isSecurityEnabled) {
       checkAppLockStatus();
@@ -52,11 +51,14 @@ export const SecurityProvider = ({ children }) => {
 
   const checkAppLockStatus = async () => {
     try {
+      if (!autoLockEnabled) return;
+
       const lastActiveTime = await AsyncStorage.getItem("lastActiveTime");
       if (lastActiveTime) {
         const timeDiff = Date.now() - parseInt(lastActiveTime);
-        // Lock app after 5 minutes of inactivity
-        if (timeDiff > 5 * 60 * 1000) {
+        const timeoutMs = autoLockTimeout * 60 * 1000; // Convert minutes to milliseconds
+
+        if (timeDiff > timeoutMs) {
           setIsLocked(true);
           setIsAuthenticated(false);
         }
@@ -133,7 +135,6 @@ export const SecurityProvider = ({ children }) => {
     setFailedAttempts(newFailedAttempts);
 
     if (newFailedAttempts >= 3) {
-      // Lock out for 20 minutes after 3 failed attempts
       const lockoutTime = Date.now() + 20 * 60 * 1000;
       setLockoutUntil(lockoutTime);
       setFailedAttempts(0);
@@ -171,7 +172,7 @@ export const SecurityProvider = ({ children }) => {
 
   const toggleBiometric = async () => {
     if (!isBiometricAvailable) return false;
-    
+
     try {
       const newValue = !isBiometricEnabled;
       await AsyncStorage.setItem("biometricEnabled", newValue.toString());
@@ -183,17 +184,14 @@ export const SecurityProvider = ({ children }) => {
     }
   };
 
-  // NEW: Master security toggle
   const toggleSecurity = async (enabled, method = null) => {
     try {
       await AsyncStorage.setItem("securityEnabled", enabled.toString());
       setIsSecurityEnabled(enabled);
-      
+
       if (enabled && method === "pin") {
-        // User chose PIN method
         return "pin";
       } else if (enabled && method === "biometric") {
-        // User chose biometric method
         if (isBiometricAvailable) {
           await AsyncStorage.setItem("biometricEnabled", "true");
           setIsBiometricEnabled(true);
@@ -207,11 +205,33 @@ export const SecurityProvider = ({ children }) => {
         setIsAuthenticated(true);
         setIsLocked(false);
       }
-      
+
       return "success";
     } catch (error) {
       console.log("Error toggling security:", error);
       return "error";
+    }
+  };
+
+  const toggleAutoLock = async (enabled) => {
+    try {
+      await AsyncStorage.setItem("autoLockEnabled", enabled.toString());
+      setAutoLockEnabled(enabled);
+      return true;
+    } catch (error) {
+      console.log("Error toggling auto lock:", error);
+      return false;
+    }
+  };
+
+  const setAutoLockTimeoutValue = async (minutes) => {
+    try {
+      await AsyncStorage.setItem("autoLockTimeout", minutes.toString());
+      setAutoLockTimeout(minutes);
+      return true;
+    } catch (error) {
+      console.log("Error setting auto lock timeout:", error);
+      return false;
     }
   };
 
@@ -220,22 +240,30 @@ export const SecurityProvider = ({ children }) => {
       const securityEnabled = await AsyncStorage.getItem("securityEnabled");
       const storedPin = await AsyncStorage.getItem("appPin");
       const biometricEnabled = await AsyncStorage.getItem("biometricEnabled");
-      
+      const autoLockEnabled = await AsyncStorage.getItem("autoLockEnabled");
+      const autoLockTimeout = await AsyncStorage.getItem("autoLockTimeout");
+
       if (securityEnabled === "true") {
         setIsSecurityEnabled(true);
-        
+
         if (storedPin) {
           setPin(storedPin);
         }
-        
+
         if (biometricEnabled === "true") {
           setIsBiometricEnabled(true);
         }
-        
-        // If security is enabled, check if we should lock the app
+
+        if (autoLockEnabled !== null) {
+          setAutoLockEnabled(autoLockEnabled === "true");
+        }
+
+        if (autoLockTimeout) {
+          setAutoLockTimeout(parseInt(autoLockTimeout));
+        }
+
         checkAppLockStatus();
       } else {
-        // Security is disabled, ensure app is unlocked
         setIsSecurityEnabled(false);
         setIsAuthenticated(true);
         setIsLocked(false);
@@ -267,7 +295,9 @@ export const SecurityProvider = ({ children }) => {
     pin,
     isBiometricEnabled,
     isBiometricAvailable,
-    isSecurityEnabled, // NEW
+    isSecurityEnabled,
+    autoLockEnabled,
+    autoLockTimeout,
     failedAttempts,
     lockoutUntil,
     isLockedOut: isLockedOut(),
@@ -278,7 +308,9 @@ export const SecurityProvider = ({ children }) => {
     lockApp,
     unlockApp,
     toggleBiometric,
-    toggleSecurity, // NEW
+    toggleSecurity,
+    toggleAutoLock,
+    setAutoLockTimeout: setAutoLockTimeoutValue,
     resetSecurity,
     updateLastActiveTime,
   };

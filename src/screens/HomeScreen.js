@@ -31,7 +31,6 @@ import {
 import { PieChart, BarChart } from "react-native-chart-kit";
 import { useDatabase } from "../context/DatabaseContext";
 import { useNotifications } from "../context/NotificationContext";
-import { useBudget } from "../context/BudgetContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigation } from "@react-navigation/native";
 
@@ -44,11 +43,17 @@ const HomeScreen = () => {
     getExpensesByDate,
     getExpensesByDateRange,
     addExpense,
+    getAllBudgets,
   } = useDatabase();
   const { sendImmediateNotification } = useNotifications();
-  const { getBudgetProgress, getBudgetStatus, getRemainingBudget } =
-    useBudget();
   const { theme, isDarkMode } = useTheme();
+
+  const [budgets, setBudgets] = useState({
+    daily: 0,
+    weekly: 0,
+    monthly: 0,
+    yearly: 0,
+  });
 
   const [userSettings, setUserSettings] = useState(null);
   const [todayExpenses, setTodayExpenses] = useState([]);
@@ -76,6 +81,10 @@ const HomeScreen = () => {
     try {
       const settings = await getUserSettings();
       setUserSettings(settings);
+
+      // Load budgets
+      const savedBudgets = await getAllBudgets();
+      setBudgets(savedBudgets);
 
       const today = format(new Date(), "yyyy-MM-dd");
       const todayExp = await getExpensesByDate(today);
@@ -258,6 +267,26 @@ const HomeScreen = () => {
       default:
         return 1;
     }
+  };
+
+  const getBudgetProgress = (period) => {
+    const budget = budgets[period];
+    const spending = getCurrentExpensesTotal();
+
+    if (budget === 0) return 0;
+    return Math.min(spending / budget, 1);
+  };
+
+  const getBudgetStatus = (period) => {
+    const progress = getBudgetProgress(period);
+
+    if (progress >= 0.95) return "critical";
+    if (progress >= 0.8) return "warning";
+    return "normal";
+  };
+
+  const getRemainingBudget = (period) => {
+    return Math.max(budgets[period] - getCurrentExpensesTotal(), 0);
   };
 
   // Chart data preparation functions
@@ -908,13 +937,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   activeTabButton: {
-    backgroundColor: "#00897B", 
+    backgroundColor: "#00897B",
   },
   tabLabel: {
     fontSize: 12,
     fontWeight: "600",
     marginLeft: 6,
-    color: "#6C757D", 
+    color: "#6C757D",
   },
   activeTabLabel: {
     color: "#ffffff",

@@ -8,7 +8,7 @@ import { useSecurity } from "../context/SecurityContext";
 const PinSetupScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { setAppPin } = useSecurity();
-  
+
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
@@ -34,7 +34,7 @@ const PinSetupScreen = ({ navigation }) => {
       showSnackbar("PIN must be at least 4 digits", "error");
       return;
     }
-    
+
     if (pin.length > 8) {
       showSnackbar("PIN cannot exceed 8 digits", "error");
       return;
@@ -62,9 +62,9 @@ const PinSetupScreen = ({ navigation }) => {
       const success = await setAppPin(pin);
       if (success) {
         showSnackbar("PIN set successfully! Redirecting to app...", "success");
-                 setTimeout(() => {
-           navigation.replace("Main");
-         }, 1500);
+        setTimeout(() => {
+          navigation.replace("MainTabs");
+        }, 1500);
       } else {
         showSnackbar("Failed to set PIN. Please try again.", "error");
       }
@@ -74,24 +74,24 @@ const PinSetupScreen = ({ navigation }) => {
   };
 
   const handleSkip = () => {
-    navigation.replace("Main");
+    navigation.replace("MainTabs");
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
         <Card.Content style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <MaterialIcons
-              name="lock"
-              size={60}
-              color={theme.colors.primary}
-            />
+            <MaterialIcons name="lock" size={60} color={theme.colors.primary} />
             <Title style={[styles.title, { color: theme.colors.text }]}>
               Secure Your Finances
             </Title>
-            <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+            <Text
+              style={[styles.subtitle, { color: theme.colors.textSecondary }]}
+            >
               Set up a PIN to protect your financial data
             </Text>
           </View>
@@ -102,12 +102,11 @@ const PinSetupScreen = ({ navigation }) => {
               {showConfirm ? "Confirm PIN" : "Enter PIN"}
             </Text>
             <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>
-              {showConfirm 
-                ? "Re-enter your PIN to confirm" 
-                : "Choose a 4-8 digit PIN"
-              }
+              {showConfirm
+                ? "Re-enter your PIN to confirm"
+                : "Choose a 4-8 digit PIN"}
             </Text>
-            
+
             {!showConfirm ? (
               <TextInput
                 ref={pinInputRef}
@@ -170,7 +169,7 @@ const PinSetupScreen = ({ navigation }) => {
                 Set PIN
               </Button>
             )}
-            
+
             <Button
               mode="outlined"
               onPress={() => {
@@ -200,7 +199,9 @@ const PinSetupScreen = ({ navigation }) => {
               size={20}
               color={theme.colors.info}
             />
-            <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
+            <Text
+              style={[styles.infoText, { color: theme.colors.textSecondary }]}
+            >
               Your PIN is stored locally on your device and never shared
             </Text>
           </View>

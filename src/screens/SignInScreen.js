@@ -12,7 +12,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 
 const SignInScreen = ({ navigation }) => {
-  const [authMethod, setAuthMethod] = useState("pin"); // 'pin' or 'biometric'
+  const [authMethod, setAuthMethod] = useState("pin"); 
   const [pin, setPin] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -30,8 +30,8 @@ const SignInScreen = ({ navigation }) => {
     try {
       const result = await signIn(pin.trim());
       if (result.success) {
-        // Navigate to main app
-        navigation.replace("MainTabs");
+        // Navigate to onboarding first
+        navigation.replace("Onboarding");
       } else {
         setError(result.error || "Invalid PIN");
         setPin("");
@@ -45,8 +45,6 @@ const SignInScreen = ({ navigation }) => {
   };
 
   const handleBiometricAuth = async () => {
-    // This would integrate with biometric authentication
-    // For now, just show a message
     setError("Biometric authentication not implemented yet");
   };
 
@@ -165,7 +163,7 @@ const SignInScreen = ({ navigation }) => {
                 <View style={styles.biometricButton}>
                   <MaterialIcons name="fingerprint" size={60} color="#FFFFFF" />
                   <Text style={styles.biometricText}>
-                    Touch to authenticate
+                    Authentication
                   </Text>
                 </View>
               </View>
@@ -257,9 +255,11 @@ const styles = StyleSheet.create({
   },
   toggleOption: {
     flex: 1,
+    flexDirection:"row",
     alignItems: "center",
     paddingVertical: 12,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
+    gap:15,
   },
   toggleOptionActive: {
     backgroundColor: "rgba(255,255,255,0.2)",
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   },
   biometricButton: {
     alignItems: "center",
-    padding: 25,
+    padding: 10,
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 20,
     borderWidth: 2,
@@ -324,9 +324,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   footer: {
+    flex: 1,
+    flexDirection:"row",
+    justifyContent:"center",
     alignItems: "center",
-    marginTop: 20,
-    marginBottom: 30,
+    marginTop: -15,
+    marginBottom: 20,
   },
   footerText: {
     fontSize: 14,

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useColorScheme } from "react-native";
 import { MD3LightTheme, MD3DarkTheme } from "react-native-paper";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const ThemeContext = createContext();
 
@@ -14,8 +15,12 @@ export const useTheme = () => {
 
 export const ThemeProvider = ({ children }) => {
   const systemColorScheme = useColorScheme();
-  const [isDarkMode, setIsDarkMode] = useState(false); // Default to light mode for modern financial app
-  const [themeMode, setThemeMode] = useState("light"); // Default to light mode
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [themeMode, setThemeMode] = useState("light");
+
+  useEffect(() => {
+    loadTheme();
+  }, []);
 
   useEffect(() => {
     if (themeMode === "system") {
@@ -33,12 +38,33 @@ export const ThemeProvider = ({ children }) => {
     }
   };
 
-  const setTheme = (mode) => {
-    setThemeMode(mode);
-    if (mode === "system") {
-      setIsDarkMode(systemColorScheme === "dark");
-    } else {
-      setIsDarkMode(mode === "dark");
+  const setTheme = async (mode) => {
+    try {
+      await AsyncStorage.setItem("themeMode", mode);
+      setThemeMode(mode);
+      if (mode === "system") {
+        setIsDarkMode(systemColorScheme === "dark");
+      } else {
+        setIsDarkMode(mode === "dark");
+      }
+    } catch (error) {
+      console.log("Error saving theme:", error);
+    }
+  };
+
+  const loadTheme = async () => {
+    try {
+      const savedTheme = await AsyncStorage.getItem("themeMode");
+      if (savedTheme) {
+        setThemeMode(savedTheme);
+        if (savedTheme === "system") {
+          setIsDarkMode(systemColorScheme === "dark");
+        } else {
+          setIsDarkMode(savedTheme === "dark");
+        }
+      }
+    } catch (error) {
+      console.log("Error loading theme:", error);
     }
   };
 

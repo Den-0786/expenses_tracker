@@ -13,7 +13,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { useSecurity } from "../context/SecurityContext";
 import { useDatabase } from "../context/DatabaseContext";
-import { useBudget } from "../context/BudgetContext";
+
 import {
   format,
   startOfWeek,
@@ -36,7 +36,6 @@ const LockScreen = () => {
     lockoutTimeRemaining,
   } = useSecurity();
   const { getExpensesByDateRange, getIncomeByDateRange } = useDatabase();
-  const { budgets, currentSpending, getBudgetProgress } = useBudget();
 
   const [pin, setPin] = useState("");
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -76,12 +75,10 @@ const LockScreen = () => {
       const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
       const monthEnd = format(endOfMonth(new Date()), "yyyy-MM-dd");
 
-      // Get limited expense data
       const todayExpenses = await getExpensesByDateRange(today, today);
       const weekExpenses = await getExpensesByDateRange(weekStart, weekEnd);
       const monthExpenses = await getExpensesByDateRange(monthStart, monthEnd);
 
-      // Get only first 3 recent expenses for privacy
       const recent = todayExpenses.slice(0, 3).map((exp) => ({
         ...exp,
         description:
@@ -139,15 +136,12 @@ const LockScreen = () => {
   };
 
   const handleForgotPin = () => {
-    // This would typically reset the app data
     showSnackbar("Please restart the app to reset", "info");
   };
 
-  // Show welcome message if security is not enabled
   if (!isSecurityEnabled) {
-    // Redirect to main app if security is not enabled
     useEffect(() => {
-      navigation.replace("Main");
+      navigation.replace("MainTabs");
     }, []);
     return null;
   }
@@ -174,7 +168,7 @@ const LockScreen = () => {
             </Text>
             <View style={styles.lockoutTimer}>
               <ProgressBar
-                progress={lockoutTimeRemaining / 1200} // 20 minutes = 1200 seconds
+                progress={lockoutTimeRemaining / 1200}
                 color={theme.colors.error}
                 style={styles.timerBar}
               />
@@ -320,14 +314,14 @@ const LockScreen = () => {
                   Weekly Budget
                 </Text>
                 <ProgressBar
-                  progress={getBudgetProgress("weekly")}
+                  progress={0}
                   color={theme.colors.primary}
                   style={styles.progressBar}
                 />
                 <Text
                   style={[styles.progressText, { color: theme.colors.text }]}
                 >
-                  {Math.round(getBudgetProgress("weekly") * 100)}% used
+                  0% used
                 </Text>
               </View>
             </View>

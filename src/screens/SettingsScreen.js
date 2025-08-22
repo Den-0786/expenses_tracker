@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, Switch } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import {
   Card,
   Title,
@@ -24,11 +26,21 @@ import { useAuth } from "../context/AuthContext";
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
-  const { getUserSettings, saveUserSettings, clearOldData } = useDatabase();
+  const {
+    getUserSettings,
+    saveUserSettings,
+    clearOldData,
+    exportData,
+    backupData,
+    getDataUsage,
+  } = useDatabase();
   const {
     scheduleDailyReminder,
     scheduleWeeklyReminder,
     scheduleMonthlyReminder,
+    notificationSettings,
+    updateNotificationSetting,
+    cancelAllNotifications,
   } = useNotifications();
   const { theme, isDarkMode, themeMode, setTheme, toggleTheme } = useTheme();
   const {
@@ -36,15 +48,24 @@ const SettingsScreen = () => {
     isBiometricAvailable,
     isBiometricEnabled,
     isSecurityEnabled,
+    autoLockEnabled,
+    autoLockTimeout,
     toggleBiometric,
     toggleSecurity,
+    toggleAutoLock,
+    setAutoLockTimeout: setAutoLockTimeoutValue,
     lockApp,
     resetSecurity,
     setAppPin,
   } = useSecurity();
-  const { showSecurityNotice, updateSecurityNoticeSetting } =
-    useSecurityNotice();
-  const { signOut } = useAuth();
+  const {
+    showSecurityNotice,
+    updateSecurityNoticeSetting,
+    resetToDefault,
+    forceReset,
+    ensureEnabled,
+  } = useSecurityNotice();
+  const { signOut, user } = useAuth();
 
   const [userSettings, setUserSettings] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -54,11 +75,18 @@ const SettingsScreen = () => {
     tithingPercentage: "10",
     tithingEnabled: true,
   });
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
   const [dataRetentionDays, setDataRetentionDays] = useState(365);
+  const [dataUsage, setDataUsage] = useState({
+    totalExpenses: 0,
+    totalIncome: 0,
+    totalRecords: 0,
+    databaseSize: "0 KB",
+  });
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarType, setSnackbarType] = useState("success");
+  const [isLoading, setIsLoading] = useState(false);
   const [pinSetupVisible, setPinSetupVisible] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [confirmPinInput, setConfirmPinInput] = useState("");
@@ -67,23 +95,30 @@ const SettingsScreen = () => {
 
   useEffect(() => {
     loadSettings();
+    loadDataUsage();
+    loadDataRetention();
   }, []);
 
   useEffect(() => {
+    // Sync local state with context state
     if (showSecurityNotice !== undefined) {
       setLocalSecurityNotice(showSecurityNotice);
     }
   }, [showSecurityNotice]);
 
+  // Initialize security notice on mount
   useEffect(() => {
-    // sourcery skip: merge-nested-ifs
-    if (isSecurityEnabled && localSecurityNotice) {
-      if (showSecurityNotice === undefined || showSecurityNotice === true) {
-        updateSecurityNoticeSetting(false);
-        setLocalSecurityNotice(false);
-      }
+    if (showSecurityNotice === undefined) {
+      console.log("Security notice undefined, resetting to default");
+      resetToDefault();
+    } else if (showSecurityNotice === false) {
+      console.log("Security notice is false, ensuring it's enabled");
+      ensureEnabled();
+    } else {
+      console.log("Security notice initialized with:", showSecurityNotice);
+      setLocalSecurityNotice(showSecurityNotice);
     }
-  }, [isSecurityEnabled]);
+  }, []);
 
   const showSnackbar = (message, type = "info") => {
     setSnackbarMessage(message);
@@ -97,6 +132,7 @@ const SettingsScreen = () => {
 
   const loadSettings = async () => {
     try {
+      setIsLoading(true);
       const settings = await getUserSettings();
       if (settings) {
         setUserSettings(settings);
@@ -109,6 +145,38 @@ const SettingsScreen = () => {
       }
     } catch (error) {
       console.error("Error loading settings:", error);
+      showSnackbar("Failed to load settings", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadDataUsage = async () => {
+    try {
+      const usage = await getDataUsage();
+      setDataUsage(usage);
+    } catch (error) {
+      console.error("Error loading data usage:", error);
+    }
+  };
+
+  const loadDataRetention = async () => {
+    try {
+      const retention = await AsyncStorage.getItem("dataRetentionDays");
+      if (retention) {
+        setDataRetentionDays(parseInt(retention));
+      }
+    } catch (error) {
+      console.error("Error loading data retention:", error);
+    }
+  };
+
+  const saveDataRetention = async (days) => {
+    try {
+      await AsyncStorage.setItem("dataRetentionDays", days.toString());
+      setDataRetentionDays(days);
+    } catch (error) {
+      console.error("Error saving data retention:", error);
     }
   };
 
@@ -187,10 +255,21 @@ const SettingsScreen = () => {
 
   const handleSecurityNoticeToggle = async (enabled) => {
     console.log("Toggling security notice to:", enabled);
+    console.log("Current showSecurityNotice from context:", showSecurityNotice);
+    console.log("Current localSecurityNotice:", localSecurityNotice);
+
+    // Always keep security notice enabled for now
+    if (!enabled) {
+      console.log("Security notice cannot be disabled, keeping it enabled");
+      showSnackbar("Security notice must remain enabled for your safety", "info");
+      return;
+    }
+
     setLocalSecurityNotice(enabled);
     try {
       await updateSecurityNoticeSetting(enabled);
       console.log("Security notice setting updated successfully");
+      console.log("New showSecurityNotice from context:", showSecurityNotice);
     } catch (error) {
       console.error("Error updating security notice setting:", error);
       // Revert local state if update failed
@@ -210,6 +289,15 @@ const SettingsScreen = () => {
       showSnackbar("Security settings reset successfully", "success");
     } catch (error) {
       showSnackbar("Failed to reset security settings", "error");
+    }
+  };
+
+  const handleForceResetSecurityNotice = async () => {
+    try {
+      await forceReset();
+      showSnackbar("Security notice reset to default successfully", "success");
+    } catch (error) {
+      showSnackbar("Failed to reset security notice", "error");
     }
   };
 
@@ -259,15 +347,78 @@ const SettingsScreen = () => {
     try {
       await clearOldData(dataRetentionDays);
       showSnackbar("Old data cleared successfully!", "success");
+      loadDataUsage(); // Refresh data usage after clearing
     } catch (error) {
       console.error("Error clearing data:", error);
       showSnackbar("Failed to clear old data. Please try again.", "error");
     }
   };
 
-  const handleResetApp = () => {
-    // This would typically navigate back to onboarding
-    showSnackbar("Reset complete! Please restart the app.", "success");
+  const handleExportData = async () => {
+    try {
+      const data = await exportData();
+      // In a real app, you would save this to a file or share it
+      console.log("Data exported:", data);
+      showSnackbar("Data exported successfully!", "success");
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      showSnackbar("Failed to export data. Please try again.", "error");
+    }
+  };
+
+  const handleBackupData = async () => {
+    try {
+      const data = await backupData();
+      // In a real app, you would save this to cloud storage
+      console.log("Data backed up:", data);
+      showSnackbar("Data backed up successfully!", "success");
+    } catch (error) {
+      console.error("Error backing up data:", error);
+      showSnackbar("Failed to backup data. Please try again.", "error");
+    }
+  };
+
+  const handleResetApp = async () => {
+    try {
+      // Clear all data from database
+      await clearOldData(0); // 0 days = clear everything
+
+      // Clear all security settings
+      await resetSecurity();
+
+      // Clear all notification settings
+      await cancelAllNotifications();
+
+      // Clear all user settings
+      await AsyncStorage.removeItem("user");
+      await AsyncStorage.removeItem("userPin");
+      await AsyncStorage.removeItem("onboardingCompleted");
+      await AsyncStorage.removeItem("securityEnabled");
+      await AsyncStorage.removeItem("biometricEnabled");
+      await AsyncStorage.removeItem("autoLockEnabled");
+      await AsyncStorage.removeItem("autoLockTimeout");
+
+      showSnackbar("App reset complete! Please restart the app.", "success");
+
+      // Navigate to SignUp after a short delay
+      setTimeout(() => {
+        navigation.replace("SignUp");
+      }, 2000);
+    } catch (error) {
+      console.error("Error resetting app:", error);
+      showSnackbar("Failed to reset app. Please try again.", "error");
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      showSnackbar("Signed out successfully", "success");
+      // Navigate to SignUp page after sign out
+      navigation.replace("SignUp");
+    } catch (error) {
+      showSnackbar("Error signing out", "error");
+    }
   };
 
   const calculateTithing = () => {
@@ -298,7 +449,9 @@ const SettingsScreen = () => {
       {/* Sticky Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
-        <Text style={styles.headerSubtitle}>Manage your preferences</Text>
+        <Text style={styles.headerSubtitle}>
+          {isLoading ? "Loading..." : "Manage your preferences"}
+        </Text>
       </View>
 
       {/* Main Content Container - Gray Parent Card */}
@@ -320,7 +473,7 @@ const SettingsScreen = () => {
                 </View>
                 <Button
                   mode="contained"
-                  onPress={() => navigation.navigate("Onboarding")}
+                  onPress={() => navigation.replace("Onboarding")}
                   icon="account-cog"
                   buttonColor={theme.colors.primary}
                   textColor="#FFFFFF"
@@ -479,7 +632,6 @@ const SettingsScreen = () => {
                   <Divider style={styles.itemDivider} />
                   <List.Item
                     title="Payment Amount"
-                    // description={`$${userSettings?.payment_amount?.toFixed(2)}`}
                     left={(props) => (
                       <List.Icon {...props} icon="currency-usd" />
                     )}
@@ -487,11 +639,6 @@ const SettingsScreen = () => {
                   <Divider style={styles.itemDivider} />
                   <List.Item
                     title="Tithing"
-                    // description={
-                    //   userSettings?.tithing_enabled
-                    //     ? `${userSettings.tithing_percentage}% ($${((userSettings.payment_amount * userSettings.tithing_percentage) / 100).toFixed(2)})`
-                    //     : "Disabled"
-                    // }
                     left={(props) => <List.Icon {...props} icon="church" />}
                   />
                 </View>
@@ -508,8 +655,10 @@ const SettingsScreen = () => {
                 left={(props) => <List.Icon {...props} icon="bell" />}
                 right={() => (
                   <Switch
-                    value={notificationsEnabled}
-                    onValueChange={setNotificationsEnabled}
+                    value={notificationSettings.daily}
+                    onValueChange={(value) =>
+                      updateNotificationSetting("daily", value)
+                    }
                     color="#2196F3"
                   />
                 )}
@@ -520,8 +669,10 @@ const SettingsScreen = () => {
                 left={(props) => <List.Icon {...props} icon="view-week" />}
                 right={() => (
                   <Switch
-                    value={notificationsEnabled}
-                    onValueChange={setNotificationsEnabled}
+                    value={notificationSettings.weekly}
+                    onValueChange={(value) =>
+                      updateNotificationSetting("weekly", value)
+                    }
                     color="#2196F3"
                   />
                 )}
@@ -532,8 +683,10 @@ const SettingsScreen = () => {
                 left={(props) => <List.Icon {...props} icon="calendar-month" />}
                 right={() => (
                   <Switch
-                    value={notificationsEnabled}
-                    onValueChange={setNotificationsEnabled}
+                    value={notificationSettings.monthly}
+                    onValueChange={(value) =>
+                      updateNotificationSetting("monthly", value)
+                    }
                     color="#2196F3"
                   />
                 )}
@@ -548,7 +701,7 @@ const SettingsScreen = () => {
 
               <List.Item
                 title="Data Retention"
-                // description={`Keep expenses for ${dataRetentionDays} days`}
+                description={`Keep expenses for ${dataRetentionDays} days`}
                 left={(props) => <List.Icon {...props} icon="database" />}
               />
 
@@ -561,7 +714,7 @@ const SettingsScreen = () => {
                       mode={
                         dataRetentionDays === days ? "contained" : "outlined"
                       }
-                      onPress={() => setDataRetentionDays(days)}
+                      onPress={() => saveDataRetention(days)}
                       compact
                       style={styles.retentionButton}
                     >
@@ -574,24 +727,11 @@ const SettingsScreen = () => {
               <Divider style={styles.itemDivider} />
 
               <List.Item
-                title="Sync Settings"
-                // description="Toggle cloud sync"
-                left={(props) => <List.Icon {...props} icon="cloud-sync" />}
-                right={() => (
-                  <Switch
-                    value={true}
-                    onValueChange={() => {}}
-                    color="#2196F3"
-                  />
-                )}
-              />
-              <Divider style={styles.itemDivider} />
-              <List.Item
                 title="Export Data"
-                // description="CSV, PDF formats"
+                description="Download all data as JSON"
                 left={(props) => <List.Icon {...props} icon="download" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={handleExportData}>
                     Export
                   </Button>
                 )}
@@ -599,10 +739,10 @@ const SettingsScreen = () => {
               <Divider style={styles.itemDivider} />
               <List.Item
                 title="Backup & Restore"
-                // description="Cloud backup"
+                description="Create backup of your data"
                 left={(props) => <List.Icon {...props} icon="backup-restore" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={handleBackupData}>
                     Backup
                   </Button>
                 )}
@@ -610,11 +750,11 @@ const SettingsScreen = () => {
               <Divider style={styles.itemDivider} />
               <List.Item
                 title="Data Usage"
-                // description="Download all data"
+                description={`${dataUsage.totalRecords} records (${dataUsage.databaseSize})`}
                 left={(props) => <List.Icon {...props} icon="cloud-download" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
-                    Download
+                  <Button mode="outlined" compact onPress={loadDataUsage}>
+                    Refresh
                   </Button>
                 )}
               />
@@ -637,8 +777,19 @@ const SettingsScreen = () => {
             <Card.Content>
               <Title style={styles.cardTitle}>Account Settings</Title>
               <List.Item
+                title="Username"
+                description={user?.username || "Not set"}
+                left={(props) => <List.Icon {...props} icon="account" />}
+                right={() => (
+                  <Button mode="outlined" compact onPress={() => {}}>
+                    Edit
+                  </Button>
+                )}
+              />
+              <Divider style={styles.itemDivider} />
+              <List.Item
                 title="Email"
-                description="user@example.com"
+                description={user?.email || "Not set"}
                 left={(props) => <List.Icon {...props} icon="email" />}
                 right={() => (
                   <Button mode="outlined" compact onPress={() => {}}>
@@ -648,32 +799,21 @@ const SettingsScreen = () => {
               />
               <Divider style={styles.itemDivider} />
               <List.Item
-                title="Password"
-                description="••••••••"
-                left={(props) => <List.Icon {...props} icon="lock" />}
+                title="Authentication Method"
+                description={user?.authMethod || "PIN"}
+                left={(props) => (
+                  <List.Icon {...props} icon="account-multiple" />
+                )}
                 right={() => (
                   <Button mode="outlined" compact onPress={() => {}}>
                     Change
                   </Button>
                 )}
               />
-              <Divider style={styles.itemDivider} />
-              <List.Item
-                title="Login Methods"
-                // description="Google, Apple, Facebook"
-                left={(props) => (
-                  <List.Icon {...props} icon="account-multiple" />
-                )}
-                right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
-                    Manage
-                  </Button>
-                )}
-              />
               <Divider style={styles.divider} />
               <Button
                 mode="outlined"
-                onPress={signOut}
+                onPress={handleSignOut}
                 style={styles.dangerButton}
                 textColor="#F44336"
               >
@@ -688,7 +828,6 @@ const SettingsScreen = () => {
               <Title style={styles.cardTitle}>App Preferences</Title>
               <List.Item
                 title="Default Currency"
-                // description="USD ($)"
                 left={(props) => <List.Icon {...props} icon="currency-usd" />}
                 right={() => (
                   <Button mode="outlined" compact onPress={() => {}}>
@@ -699,7 +838,6 @@ const SettingsScreen = () => {
               <Divider style={styles.itemDivider} />
               <List.Item
                 title="Default Payment Method"
-                // description="Cash"
                 left={(props) => <List.Icon {...props} icon="credit-card" />}
                 right={() => (
                   <Button mode="outlined" compact onPress={() => {}}>
@@ -780,6 +918,7 @@ const SettingsScreen = () => {
                 )}
               />
               <Divider style={styles.itemDivider} />
+              
               {/* Security Notice Toggle */}
               <List.Item
                 title="Show Security Notice"
@@ -798,6 +937,20 @@ const SettingsScreen = () => {
                   />
                 )}
               />
+
+              {/* Security Notice Reset Button */}
+              <View style={styles.securityNoticeResetContainer}>
+                <Button
+                  mode="outlined"
+                  onPress={handleForceResetSecurityNotice}
+                  compact
+                  textColor={theme.colors.warning}
+                  outlineColor={theme.colors.warning}
+                  style={styles.securityNoticeResetButton}
+                >
+                  Reset to Default (ON)
+                </Button>
+              </View>
 
               {/* Security Method Selection (only show when security is enabled) */}
               {isSecurityEnabled && (
@@ -825,6 +978,7 @@ const SettingsScreen = () => {
                     )}
                   />
                   <Divider style={styles.itemDivider} />
+                  
                   {/* Biometric Authentication */}
                   {isBiometricAvailable && (
                     <List.Item
@@ -848,10 +1002,11 @@ const SettingsScreen = () => {
                   {isBiometricAvailable && (
                     <Divider style={styles.itemDivider} />
                   )}
+                  
                   {/* Auto Lock */}
                   <List.Item
                     title="Auto Lock"
-                    // description="Lock app after 5 minutes of inactivity"
+                    description={`Lock app after ${autoLockTimeout} minutes of inactivity`}
                     left={(props) => (
                       <List.Icon
                         {...props}
@@ -861,13 +1016,39 @@ const SettingsScreen = () => {
                     )}
                     right={() => (
                       <Switch
-                        value={true}
-                        onValueChange={() => {}}
+                        value={autoLockEnabled}
+                        onValueChange={toggleAutoLock}
                         color={theme.colors.primary}
                       />
                     )}
                   />
+
+                  {autoLockEnabled && (
+                    <View style={styles.autoLockContainer}>
+                      <Text style={styles.autoLockLabel}>
+                        Timeout (minutes):
+                      </Text>
+                      <View style={styles.autoLockButtons}>
+                        {[1, 5, 15, 30].map((minutes) => (
+                          <Button
+                            key={minutes}
+                            mode={
+                              autoLockTimeout === minutes
+                                ? "contained"
+                                : "outlined"
+                            }
+                            onPress={() => setAutoLockTimeoutValue(minutes)}
+                            compact
+                            style={styles.autoLockButton}
+                          >
+                            {minutes}
+                          </Button>
+                        ))}
+                      </View>
+                    </View>
+                  )}
                   <Divider style={styles.itemDivider} />
+                  
                   {/* Lock App Now */}
                   <List.Item
                     title="Lock App Now"
@@ -892,6 +1073,7 @@ const SettingsScreen = () => {
                     )}
                   />
                   <Divider style={styles.itemDivider} />
+                  
                   {/* Reset Security */}
                   <List.Item
                     title="Reset Security"
@@ -915,6 +1097,7 @@ const SettingsScreen = () => {
                     )}
                   />
                   <Divider style={styles.itemDivider} />
+                  
                   <List.Item
                     title="Privacy Policy"
                     description="View privacy policy"
@@ -928,6 +1111,7 @@ const SettingsScreen = () => {
                     )}
                   />
                   <Divider style={styles.itemDivider} />
+                  
                   <List.Item
                     title="Terms of Service"
                     description="View terms"
@@ -1027,12 +1211,21 @@ const SettingsScreen = () => {
               <Title style={styles.cardTitle}>App Information</Title>
               <List.Item
                 title="Version"
-                description="1.0.0"
+                description={Constants.expoConfig?.version || "1.0.0"}
                 left={(props) => <List.Icon {...props} icon="information" />}
               />
               <Divider style={styles.itemDivider} />
               <List.Item
+                title="Build"
+                description={
+                  Constants.expoConfig?.runtimeVersion || "Development"
+                }
+                left={(props) => <List.Icon {...props} icon="code-braces" />}
+              />
+              <Divider style={styles.itemDivider} />
+              <List.Item
                 title="Database"
+                description="SQLite Local Database"
                 left={(props) => <List.Icon {...props} icon="database" />}
               />
             </Card.Content>
@@ -1057,7 +1250,7 @@ const SettingsScreen = () => {
                 </Button>
                 <Button
                   mode="outlined"
-                  onPress={signOut}
+                  onPress={handleSignOut}
                   style={styles.dangerButton}
                   textColor="#FF9800"
                 >
@@ -1400,6 +1593,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 10,
+  },
+  autoLockContainer: {
+    marginVertical: 15,
+    paddingHorizontal: 16,
+  },
+  autoLockLabel: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 10,
+  },
+  autoLockButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  autoLockButton: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  securityNoticeResetContainer: {
+    marginVertical: 10,
+    paddingHorizontal: 16,
+  },
+  securityNoticeResetButton: {
+    alignSelf: "center",
   },
 });
 

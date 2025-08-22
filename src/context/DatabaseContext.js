@@ -1,6 +1,24 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import * as SQLite from "expo-sqlite";
 import { format } from "date-fns";
+
+/**
+ * DatabaseContext - Prepared for Neon Postgres Integration
+ *
+ * CURRENT STATUS: Using mock database until Neon integration is complete
+ *
+ * NEON INTEGRATION PLAN:
+ * 1. Install: npm install pg @types/pg
+ * 2. Set environment variable: NEON_DATABASE_URL
+ * 3. Replace mock database with Postgres pool connection
+ * 4. Update all database operations to use Postgres queries
+ * 5. Update table schemas to use Postgres data types
+ *
+ * KEY CHANGES NEEDED:
+ * - Replace SQLite syntax with Postgres syntax
+ * - Use connection pooling for better performance
+ * - Implement proper error handling for network operations
+ * - Add connection retry logic for production reliability
+ */
 
 const DatabaseContext = createContext();
 
@@ -15,6 +33,7 @@ export const useDatabase = () => {
 export const DatabaseProvider = ({ children }) => {
   const [db, setDb] = useState(null);
   const [isReady, setIsReady] = useState(false);
+  const [connectionString, setConnectionString] = useState(null);
 
   useEffect(() => {
     initializeDatabase();
@@ -22,198 +41,38 @@ export const DatabaseProvider = ({ children }) => {
 
   const initializeDatabase = async () => {
     try {
-      // Check if SQLite is available
-      if (!SQLite || !SQLite.openDatabase) {
-        console.log("SQLite is not available - using mock database");
-        // Create a mock database for testing
-        setDb({
-          mock: true,
-          // Add mock data storage
-          mockData: {
-            userSettings: null,
-            expenses: [
-              // Sample expenses for better chart visualization
-              {
-                id: 1,
-                amount: 25.5,
-                description: "Lunch at McDonald's",
-                category: "Food",
-                date: format(new Date(), "yyyy-MM-dd"),
-                payment_method: "Card",
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: 2,
-                amount: 15.0,
-                description: "Coffee and snacks",
-                category: "Food",
-                date: format(new Date(), "yyyy-MM-dd"),
-                payment_method: "Cash",
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: 3,
-                amount: 45.0,
-                description: "Gas for car",
-                category: "Transport",
-                date: format(new Date(), "yyyy-MM-dd"),
-                payment_method: "Card",
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: 4,
-                amount: 120.0,
-                description: "Shopping at Walmart",
-                category: "Shopping",
-                date: format(new Date(), "yyyy-MM-dd"),
-                payment_method: "Card",
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: 5,
-                amount: 80.0,
-                description: "Movie tickets",
-                category: "Entertainment",
-                date: format(new Date(), "yyyy-MM-dd"),
-                payment_method: "Card",
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              // Previous days for trends
-              {
-                id: 6,
-                amount: 30.0,
-                description: "Dinner yesterday",
-                category: "Food",
-                date: format(
-                  new Date(Date.now() - 24 * 60 * 60 * 1000),
-                  "yyyy-MM-dd"
-                ),
-                payment_method: "Cash",
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: 7,
-                amount: 60.0,
-                description: "Uber rides",
-                category: "Transport",
-                date: format(
-                  new Date(Date.now() - 24 * 60 * 60 * 1000),
-                  "yyyy-MM-dd"
-                ),
-                payment_method: "Card",
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-            ],
-            income: [],
-            dailySummaries: {},
-            weeklySummaries: {},
-            monthlySummaries: {},
-          },
-        });
-        setIsReady(true);
-        return;
-      }
-
-      const database = SQLite.openDatabase("expenses.db");
-      setDb(database);
-
-      // Create tables
-      await createTables(database);
-      setIsReady(true);
-    } catch (error) {
-      console.error("Error initializing database:", error);
-      // Fallback to mock database
+      // For now, using mock database until Neon integration is complete
+      // TODO: Replace with Neon Postgres connection
+      console.log("Initializing database - Neon integration pending");
       setDb({
         mock: true,
         mockData: {
           userSettings: null,
-          expenses: [
-            // Sample expenses for better chart visualization
-            {
-              id: 1,
-              amount: 25.5,
-              description: "Lunch at McDonald's",
-              category: "Food",
-              date: format(new Date(), "yyyy-MM-dd"),
-              payment_method: "Card",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-            {
-              id: 2,
-              amount: 15.0,
-              description: "Coffee and snacks",
-              category: "Food",
-              date: format(new Date(), "yyyy-MM-dd"),
-              payment_method: "Cash",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-            {
-              id: 3,
-              amount: 45.0,
-              description: "Gas for car",
-              category: "Transport",
-              date: format(new Date(), "yyyy-MM-dd"),
-              payment_method: "Card",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-            {
-              id: 4,
-              amount: 120.0,
-              description: "Shopping at Walmart",
-              category: "Shopping",
-              date: format(new Date(), "yyyy-MM-dd"),
-              payment_method: "Card",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-            {
-              id: 5,
-              amount: 80.0,
-              description: "Movie tickets",
-              category: "Entertainment",
-              date: format(new Date(), "yyyy-MM-dd"),
-              payment_method: "Card",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-            // Previous days for trends
-            {
-              id: 6,
-              amount: 30.0,
-              description: "Dinner yesterday",
-              category: "Food",
-              date: format(
-                new Date(Date.now() - 24 * 60 * 60 * 1000),
-                "yyyy-MM-dd"
-              ),
-              payment_method: "Cash",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-            {
-              id: 7,
-              amount: 60.0,
-              description: "Uber rides",
-              category: "Transport",
-              date: format(
-                new Date(Date.now() - 24 * 60 * 60 * 1000),
-                "yyyy-MM-dd"
-              ),
-              payment_method: "Card",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ],
+          expenses: [],
+          income: [],
+          dailySummaries: {},
+          weeklySummaries: {},
+          monthlySummaries: {},
+        },
+      });
+      setIsReady(true);
+
+      // TODO: Neon integration code will go here:
+      // const { Pool } = require('pg');
+      // const pool = new Pool({
+      //   connectionString: process.env.NEON_DATABASE_URL,
+      //   ssl: { rejectUnauthorized: false }
+      // });
+      // setDb(pool);
+      // await createTables(pool);
+      // setIsReady(true);
+    } catch (error) {
+      console.error("Error initializing database:", error);
+      setDb({
+        mock: true,
+        mockData: {
+          userSettings: null,
+          expenses: [],
           income: [],
           dailySummaries: {},
           weeklySummaries: {},
@@ -224,96 +83,141 @@ export const DatabaseProvider = ({ children }) => {
     }
   };
 
-  const createTables = (database) => {
-    return new Promise((resolve, reject) => {
-      database.transaction(
-        (tx) => {
-          // User settings table
-          tx.executeSql(
-            `CREATE TABLE IF NOT EXISTS user_settings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            payment_frequency TEXT NOT NULL,
-            payment_amount REAL NOT NULL,
-            tithing_percentage REAL DEFAULT 10.0,
-            tithing_enabled BOOLEAN DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-          );`
-          );
+  const createTables = async (pool) => {
+    try {
+      // TODO: Replace with Neon Postgres table creation
+      // These will be Postgres-compatible SQL statements
+      const createUserSettingsTable = `
+        CREATE TABLE IF NOT EXISTS user_settings (
+          id SERIAL PRIMARY KEY,
+          payment_frequency VARCHAR(20) NOT NULL,
+          payment_amount DECIMAL(10,2) NOT NULL,
+          tithing_percentage DECIMAL(5,2),
+          tithing_enabled BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
 
-          // Expenses table
-          tx.executeSql(
-            `CREATE TABLE IF NOT EXISTS expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            amount REAL NOT NULL,
-            description TEXT NOT NULL,
-            category TEXT,
-            date TEXT NOT NULL,
-            payment_method TEXT DEFAULT 'Cash',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-          );`
-          );
+      const createExpensesTable = `
+        CREATE TABLE IF NOT EXISTS expenses (
+          id SERIAL PRIMARY KEY,
+          amount DECIMAL(10,2) NOT NULL,
+          description VARCHAR(255) NOT NULL,
+          category VARCHAR(100),
+          date DATE NOT NULL,
+          payment_method VARCHAR(50) DEFAULT 'Cash',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
 
-          // Income table
-          tx.executeSql(
-            `CREATE TABLE IF NOT EXISTS income (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            amount REAL NOT NULL,
-            description TEXT NOT NULL,
-            category TEXT,
-            source TEXT,
-            date TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-          );`
-          );
+      const createIncomeTable = `
+        CREATE TABLE IF NOT EXISTS income (
+          id SERIAL PRIMARY KEY,
+          amount DECIMAL(10,2) NOT NULL,
+          description VARCHAR(255) NOT NULL,
+          category VARCHAR(100),
+          source VARCHAR(100),
+          date DATE NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
 
-          // Daily summaries table
-          tx.executeSql(
-            `CREATE TABLE IF NOT EXISTS daily_summaries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT UNIQUE NOT NULL,
-            total_expenses REAL DEFAULT 0,
-            total_tithing REAL DEFAULT 0,
-            remaining_balance REAL DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-          );`
-          );
+      const createDailySummariesTable = `
+        CREATE TABLE IF NOT EXISTS daily_summaries (
+          id SERIAL PRIMARY KEY,
+          date DATE UNIQUE NOT NULL,
+          total_expenses DECIMAL(10,2) DEFAULT 0,
+          total_tithing DECIMAL(10,2) DEFAULT 0,
+          remaining_balance DECIMAL(10,2) DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
 
-          // Weekly summaries table
-          tx.executeSql(
-            `CREATE TABLE IF NOT EXISTS weekly_summaries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            week_start TEXT NOT NULL,
-            week_end TEXT NOT NULL,
-            total_expenses REAL DEFAULT 0,
-            total_tithing REAL DEFAULT 0,
-            remaining_balance REAL DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-          );`
-          );
+      const createWeeklySummariesTable = `
+        CREATE TABLE IF NOT EXISTS weekly_summaries (
+          id SERIAL PRIMARY KEY,
+          week_start DATE NOT NULL,
+          week_end DATE NOT NULL,
+          total_expenses DECIMAL(10,2) DEFAULT 0,
+          total_tithing DECIMAL(10,2) DEFAULT 0,
+          remaining_balance DECIMAL(10,2) DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
 
-          // Monthly summaries table
-          tx.executeSql(
-            `CREATE TABLE IF NOT EXISTS monthly_summaries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            month TEXT NOT NULL,
-            year INTEGER NOT NULL,
-            total_expenses REAL DEFAULT 0,
-            total_tithing REAL DEFAULT 0,
-            remaining_balance REAL DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-          );`
-          );
-        },
-        reject,
-        resolve
-      );
-    });
+      const createMonthlySummariesTable = `
+        CREATE TABLE IF NOT EXISTS monthly_summaries (
+          id SERIAL PRIMARY KEY,
+          month VARCHAR(20) NOT NULL,
+          year INTEGER NOT NULL,
+          total_expenses DECIMAL(10,2) DEFAULT 0,
+          total_tithing DECIMAL(10,2) DEFAULT 0,
+          remaining_balance DECIMAL(10,2) DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
+
+      const createBudgetsTable = `
+        CREATE TABLE IF NOT EXISTS budgets (
+          id SERIAL PRIMARY KEY,
+          period VARCHAR(20) NOT NULL,
+          amount DECIMAL(10,2) DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
+
+      // TODO: Execute these queries when Neon is connected
+      // await pool.query(createUserSettingsTable);
+      // await pool.query(createExpensesTable);
+      // await pool.query(createIncomeTable);
+      // await pool.query(createDailySummariesTable);
+      // await pool.query(createWeeklySummariesTable);
+      // await pool.query(createMonthlySummariesTable);
+      // await pool.query(createBudgetsTable);
+
+      console.log("Table schemas prepared for Neon Postgres");
+      return true;
+    } catch (error) {
+      console.error("Error creating tables:", error);
+      return false;
+    }
+  };
+
+  // TODO: Neon connection setup function
+  const setupNeonConnection = async () => {
+    try {
+      // This function will be implemented when Neon is ready
+      // const { Pool } = require('pg');
+      // const pool = new Pool({
+      //   connectionString: process.env.NEON_DATABASE_URL,
+      //   ssl: { rejectUnauthorized: false },
+      //   max: 20, // Maximum number of connections
+      //   idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+      //   connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+      // });
+
+      // // Test the connection
+      // const client = await pool.connect();
+      // await client.query('SELECT NOW()');
+      // client.release();
+
+      // setDb(pool);
+      // await createTables(pool);
+      // setIsReady(true);
+
+      console.log("Neon connection setup - ready to implement");
+      return true;
+    } catch (error) {
+      console.error("Error setting up Neon connection:", error);
+      return false;
+    }
   };
 
   const saveUserSettings = (
@@ -328,7 +232,6 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Saving user settings", {
           paymentFrequency,
@@ -336,7 +239,6 @@ export const DatabaseProvider = ({ children }) => {
           tithingPercentage,
           tithingEnabled,
         });
-        // Store in mock data
         db.mockData.userSettings = {
           id: 1,
           payment_frequency: paymentFrequency,
@@ -375,10 +277,9 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Getting user settings");
-        resolve(db.mockData.userSettings); // Return stored settings
+        resolve(db.mockData.userSettings);
         return;
       }
 
@@ -406,7 +307,6 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Adding expense", {
           amount,
@@ -415,7 +315,6 @@ export const DatabaseProvider = ({ children }) => {
           date,
           paymentMethod,
         });
-        // Store in mock data
         const newExpense = {
           id: Date.now(),
           amount,
@@ -450,7 +349,6 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Adding income", {
           amount,
@@ -459,7 +357,6 @@ export const DatabaseProvider = ({ children }) => {
           source,
           date,
         });
-        // Store in mock data
         const newIncome = {
           id: Date.now(),
           amount,
@@ -478,7 +375,7 @@ export const DatabaseProvider = ({ children }) => {
       db.transaction((tx) => {
         tx.executeSql(
           `INSERT INTO income (amount, description, category, source, date, created_at, updated_at) 
-           VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+           VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
           [amount, description, category, source, date],
           (_, result) => resolve(result),
           (_, error) => reject(error)
@@ -494,10 +391,8 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Getting expenses for date", date);
-        // Filter expenses by date
         const expensesForDate = db.mockData.expenses.filter(
           (expense) => expense.date === date
         );
@@ -523,13 +418,11 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Getting expenses for date range", {
           startDate,
           endDate,
         });
-        // Filter expenses by date range
         const expensesInRange = db.mockData.expenses.filter(
           (expense) => expense.date >= startDate && expense.date <= endDate
         );
@@ -555,7 +448,6 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Updating expense", {
           id,
@@ -587,7 +479,6 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Deleting expense", { id });
         resolve({ rowsAffected: 1 });
@@ -617,7 +508,6 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Saving daily summary", {
           date,
@@ -655,7 +545,6 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Saving weekly summary", {
           weekStart,
@@ -694,7 +583,6 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Saving monthly summary", {
           month,
@@ -727,7 +615,6 @@ export const DatabaseProvider = ({ children }) => {
         return;
       }
 
-      // Handle mock database
       if (db.mock) {
         console.log("Mock: Clearing old data", { daysToKeep });
         resolve({ rowsAffected: 0 });
@@ -749,9 +636,202 @@ export const DatabaseProvider = ({ children }) => {
     });
   };
 
+  const saveBudget = (period, amount) => {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      if (db.mock) {
+        console.log("Mock: Saving budget", { period, amount });
+        resolve({ insertId: 1 });
+        return;
+      }
+
+      db.transaction((tx) => {
+        tx.executeSql(
+          `INSERT OR REPLACE INTO budgets (period, amount, updated_at) 
+           VALUES (?, ?, datetime('now'))`,
+          [period, amount],
+          (_, result) => resolve(result),
+          (_, error) => reject(error)
+        );
+      });
+    });
+  };
+
+  const getBudget = (period) => {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      if (db.mock) {
+        console.log("Mock: Getting budget for period", period);
+        resolve(0);
+        return;
+      }
+
+      db.transaction((tx) => {
+        tx.executeSql(
+          "SELECT amount FROM budgets WHERE period = ?",
+          [period],
+          (_, { rows }) => resolve(rows._array[0]?.amount || 0),
+          (_, error) => reject(error)
+        );
+      });
+    });
+  };
+
+  const getAllBudgets = () => {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      if (db.mock) {
+        console.log("Mock: Getting all budgets");
+        resolve({ daily: 0, weekly: 0, monthly: 0, yearly: 0 });
+        return;
+      }
+
+      db.transaction((tx) => {
+        tx.executeSql(
+          "SELECT period, amount FROM budgets",
+          [],
+          (_, { rows }) => {
+            const budgets = { daily: 0, weekly: 0, monthly: 0, yearly: 0 };
+            rows._array.forEach((row) => {
+              budgets[row.period] = row.amount;
+            });
+            resolve(budgets);
+          },
+          (_, error) => reject(error)
+        );
+      });
+    });
+  };
+
+  const exportData = () => {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      if (db.mock) {
+        console.log("Mock: Exporting data");
+        resolve({
+          expenses: [],
+          income: [],
+          userSettings: {},
+          budgets: {},
+        });
+        return;
+      }
+
+      db.transaction((tx) => {
+        tx.executeSql(
+          "SELECT * FROM expenses ORDER BY date DESC",
+          [],
+          (_, { rows: expenses }) => {
+            tx.executeSql(
+              "SELECT * FROM income ORDER BY date DESC",
+              [],
+              (_, { rows: income }) => {
+                tx.executeSql(
+                  "SELECT * FROM user_settings LIMIT 1",
+                  [],
+                  (_, { rows: userSettings }) => {
+                    tx.executeSql(
+                      "SELECT * FROM budgets",
+                      [],
+                      (_, { rows: budgets }) => {
+                        const exportData = {
+                          expenses: expenses._array,
+                          income: income._array,
+                          userSettings: userSettings._array[0] || {},
+                          budgets: budgets._array.reduce((acc, row) => {
+                            acc[row.period] = row.amount;
+                            return acc;
+                          }, {}),
+                          exportDate: new Date().toISOString(),
+                        };
+                        resolve(exportData);
+                      },
+                      (_, error) => reject(error)
+                    );
+                  },
+                  (_, error) => reject(error)
+                );
+              },
+              (_, error) => reject(error)
+            );
+          },
+          (_, error) => reject(error)
+        );
+      });
+    });
+  };
+
+  const backupData = () => {
+    return exportData();
+  };
+
+  const getDataUsage = () => {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      if (db.mock) {
+        console.log("Mock: Getting data usage");
+        resolve({
+          totalExpenses: 0,
+          totalIncome: 0,
+          totalRecords: 0,
+          databaseSize: "0 KB",
+        });
+        return;
+      }
+
+      db.transaction((tx) => {
+        tx.executeSql(
+          "SELECT COUNT(*) as count FROM expenses",
+          [],
+          (_, { rows }) => {
+            const expenseCount = rows._array[0].count;
+            tx.executeSql(
+              "SELECT COUNT(*) as count FROM income",
+              [],
+              (_, { rows: incomeRows }) => {
+                const incomeCount = incomeRows._array[0].count;
+                const totalRecords = expenseCount + incomeCount;
+
+                resolve({
+                  totalExpenses: expenseCount,
+                  totalIncome: incomeCount,
+                  totalRecords,
+                  databaseSize: `${Math.round(totalRecords * 0.1)} KB`, // Rough estimate
+                });
+              },
+              (_, error) => reject(error)
+            );
+          },
+          (_, error) => reject(error)
+        );
+      });
+    });
+  };
+
   const value = {
     isReady,
-    db, // Expose db object for debugging
+    db,
+    setupNeonConnection,
     saveUserSettings,
     getUserSettings,
     addExpense,
@@ -764,6 +844,12 @@ export const DatabaseProvider = ({ children }) => {
     saveWeeklySummary,
     saveMonthlySummary,
     clearOldData,
+    saveBudget,
+    getBudget,
+    getAllBudgets,
+    exportData,
+    backupData,
+    getDataUsage,
   };
 
   return (

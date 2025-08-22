@@ -42,23 +42,22 @@ const OnboardingScreen = () => {
     useSecurityNotice();
   const { completeOnboarding, isAuthenticated } = useAuth();
 
-  // Redirect to auth if not authenticated
+  // Redirect to sign in if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
-      navigation.replace("Auth");
+      navigation.replace("SignIn");
     }
   }, [isAuthenticated, navigation]);
 
-  const [showSetup, setShowSetup] = useState(false);
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [tithingPercentage, setTithingPercentage] = useState("10");
+  const [tithingPercentage, setTithingPercentage] = useState("");
   const [tithingEnabled, setTithingEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarType, setSnackbarType] = useState("success");
-  const [splashProgress, setSplashProgress] = useState(0);
+
   const [userSettings, setUserSettings] = useState(null);
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [pin, setPin] = useState("");
@@ -73,72 +72,29 @@ const OnboardingScreen = () => {
     }
   }, [isReady]);
 
-  // Auto-hide security notice when security is enabled
-  useEffect(() => {
-    if (isSecurityEnabled && showSecurityNotice) {
-      updateSecurityNoticeSetting(false);
-    }
-  }, [isSecurityEnabled, showSecurityNotice, updateSecurityNoticeSetting]);
-
-  useEffect(() => {
-    // Show ET branding for 10 seconds, then show setup
-    const totalTime = 10000; // 10 seconds
-    const interval = 100; // Update every 100ms for smooth progress
-
-    const progressTimer = setInterval(() => {
-      setSplashProgress((prev) => {
-        const newProgress = prev + 100 / (totalTime / interval);
-        if (newProgress >= 100) {
-          clearInterval(progressTimer);
-          return 100;
-        }
-        return newProgress;
-      });
-    }, interval);
-
-    const timer = setTimeout(() => {
-      setShowSetup(true);
-      setSplashProgress(0);
-    }, totalTime);
-
-    return () => {
-      clearTimeout(timer);
-      clearInterval(progressTimer);
-    };
-  }, []);
+  // Security notice is now managed independently in settings
+  // No auto-hiding logic here
 
   const checkExistingSettings = async () => {
     try {
       const settings = await getUserSettings();
       setUserSettings(settings);
-      // Only auto-redirect if this is the first launch
-      // If user navigated here from main app, don't redirect
-      if (settings && !navigation.isFocused()) {
-        navigation.replace("Main");
+      // Don't auto-redirect if user is coming from settings to edit
+      // Only redirect if this is the initial app launch
+      if (settings && !navigation.isFocused() && !navigation.canGoBack()) {
+        navigation.replace("MainTabs");
       }
     } catch (error) {
       console.error("Error checking settings:", error);
     }
   };
 
-  // Check if user is coming from main app to edit settings
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      // When screen comes into focus, check if we should show setup form
-      if (userSettings) {
-        setShowSetup(true);
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation, userSettings]);
-
   // Populate form with existing settings when editing
   useEffect(() => {
     if (userSettings) {
       setPaymentFrequency(userSettings.payment_frequency || "monthly");
       setPaymentAmount(userSettings.payment_amount?.toString() || "");
-      setTithingPercentage(userSettings.tithing_percentage?.toString() || "10");
+      setTithingPercentage(userSettings.tithing_percentage?.toString() || "");
       setTithingEnabled(userSettings.tithing_enabled === 1);
     }
   }, [userSettings]);
@@ -151,13 +107,19 @@ const OnboardingScreen = () => {
 
     if (
       tithingEnabled &&
-      (parseFloat(tithingPercentage) < 10 ||
+      (!tithingPercentage ||
+        parseFloat(tithingPercentage) < 10 ||
         parseFloat(tithingPercentage) > 100)
     ) {
       showSnackbar(
         "Please enter a valid percentage between 10 and 100.",
         "error"
       );
+      return;
+    }
+
+    if (tithingEnabled && !tithingPercentage) {
+      showSnackbar("Please enter a tithing percentage.", "error");
       return;
     }
 
@@ -250,59 +212,6 @@ const OnboardingScreen = () => {
     setSnackbarVisible(false);
   };
 
-  // Show full-screen ET branding splash
-  if (!showSetup) {
-    return (
-      <View style={styles.container}>
-        <LinearGradient
-          colors={[
-            theme.colors.primary, // Teal
-            theme.colors.info, // Blue
-            theme.colors.secondary, // Green
-          ]}
-          style={styles.fullScreenGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.brandContainer}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.brandAcronym}>ET</Text>
-            </View>
-            <Text style={styles.brandText}>EXPENSES TRACKER</Text>
-            <Text style={styles.brandTagline}>Smart Financial Management</Text>
-
-            {/* Progress Bar */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View
-                  style={[styles.progressFill, { width: `${splashProgress}%` }]}
-                />
-              </View>
-              <Text style={styles.progressText}>
-                {Math.round(splashProgress)}%
-              </Text>
-            </View>
-
-            <Text style={styles.loadingText}>
-              Loading... {Math.round((100 - splashProgress) / 10)}s remaining
-            </Text>
-
-            {/* Manual skip button for testing */}
-            <Button
-              mode="contained"
-              onPress={() => setShowSetup(true)}
-              style={styles.skipButton}
-              buttonColor="rgba(255, 255, 255, 0.2)"
-              textColor="#ffffff"
-            >
-              Skip (Tap to continue)
-            </Button>
-          </View>
-        </LinearGradient>
-      </View>
-    );
-  }
-
   // Show setup form
   return (
     <View style={styles.container}>
@@ -316,9 +225,23 @@ const OnboardingScreen = () => {
         <View style={styles.header}>
           <View style={styles.headerBrand}>
             <View style={styles.headerLogoCircle}>
-              <Text style={styles.headerBrandAcronym}>ET</Text>
+              <Text
+                style={[
+                  styles.headerBrandAcronym,
+                  { color: theme.colors.onPrimary },
+                ]}
+              >
+                ET
+              </Text>
             </View>
-            <Text style={styles.headerBrandText}>EXPENSES TRACKER</Text>
+            <Text
+              style={[
+                styles.headerBrandText,
+                { color: theme.colors.onPrimary },
+              ]}
+            >
+              EXPENSES TRACKER
+            </Text>
           </View>
         </View>
 
@@ -358,7 +281,7 @@ const OnboardingScreen = () => {
             style={[
               styles.setupCard,
               {
-                backgroundColor: "#FFFFFF", // Force white background
+                backgroundColor: theme.colors.surface,
                 elevation: 8,
                 shadowColor: theme.colors.primary,
                 shadowOffset: { width: 0, height: 4 },
@@ -404,7 +327,7 @@ const OnboardingScreen = () => {
                         }
                         textColor={
                           paymentFrequency === freq
-                            ? "#ffffff"
+                            ? theme.colors.onPrimary
                             : theme.colors.primary
                         }
                       >
@@ -415,13 +338,21 @@ const OnboardingScreen = () => {
                 </View>
 
                 {/* Add Expenses Button */}
-                <View style={styles.addExpensesContainer}>
+                <View
+                  style={[
+                    styles.addExpensesContainer,
+                    {
+                      borderTopColor: theme.colors.border,
+                      borderBottomColor: theme.colors.border,
+                    },
+                  ]}
+                >
                   <Button
                     mode="contained"
-                    onPress={() => navigation.replace("Main")}
+                    onPress={() => navigation.replace("MainTabs")}
                     style={styles.addExpensesButton}
                     buttonColor={theme.colors.secondary}
-                    textColor="#FFFFFF"
+                    textColor={theme.colors.onPrimary}
                     icon="plus"
                   >
                     Add Expenses
@@ -445,7 +376,7 @@ const OnboardingScreen = () => {
                   style={[
                     styles.input,
                     {
-                      backgroundColor: "#FFFFFF", // Force white background
+                      backgroundColor: theme.colors.surface,
                       borderColor: theme.colors.border,
                     },
                   ]}
@@ -481,13 +412,12 @@ const OnboardingScreen = () => {
                         style={[
                           styles.input,
                           {
-                            backgroundColor: "#FFFFFF", // Force white background
+                            backgroundColor: theme.colors.surface,
                             borderColor: theme.colors.border,
                           },
                         ]}
-                        placeholder="10"
+                        placeholder="Enter percentage"
                         right={<TextInput.Affix text="%" />}
-                        min={10}
                         textColor={theme.colors.text}
                         labelStyle={{ color: theme.colors.textSecondary }}
                         placeholderTextColor={theme.colors.textSecondary}
@@ -511,7 +441,7 @@ const OnboardingScreen = () => {
                     style={[
                       styles.summaryCard,
                       {
-                        backgroundColor: "#FFFFFF", // Force white background
+                        backgroundColor: theme.colors.surface,
                         borderLeftColor: theme.colors.primary,
                         borderLeftWidth: 4,
                         elevation: 2,
@@ -600,7 +530,7 @@ const OnboardingScreen = () => {
                   style={styles.completeButton}
                   labelStyle={styles.completeButtonLabel}
                   buttonColor={theme.colors.accent}
-                  textColor="#FFFFFF"
+                  textColor={theme.colors.onPrimary}
                 >
                   {userSettings ? "Update Settings" : "Complete Setup"}
                 </Button>
@@ -660,7 +590,7 @@ const OnboardingScreen = () => {
                             }
                             style={styles.pinSetupButton}
                             buttonColor={theme.colors.primary}
-                            textColor="#FFFFFF"
+                            textColor={theme.colors.onPrimary}
                           >
                             {pinStep === "pin" ? "Continue" : "Set PIN"}
                           </Button>
@@ -702,58 +632,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // Full screen splash styles
-  fullScreenGradient: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  brandContainer: {
-    alignItems: "center",
-  },
-  logoCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 30,
-    borderWidth: 4,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
-  brandAcronym: {
-    fontSize: 64,
-    fontWeight: "bold",
-    color: "#ffffff",
-    letterSpacing: 3,
-  },
-  brandText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#ffffff",
-    opacity: 0.95,
-    letterSpacing: 4,
-    marginBottom: 12,
-  },
-  brandTagline: {
-    fontSize: 18,
-    color: "#ffffff",
-    opacity: 0.8,
-    fontStyle: "italic",
-    marginBottom: 20,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: "#ffffff",
-    opacity: 0.7,
-  },
-  skipButton: {
-    marginTop: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
+
   // Setup form styles
   backgroundGradient: {
     flex: 1,
@@ -781,13 +660,11 @@ const styles = StyleSheet.create({
   headerBrandAcronym: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#ffffff",
     letterSpacing: 2,
   },
   headerBrandText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#ffffff",
     opacity: 0.95,
     letterSpacing: 2,
   },
@@ -843,9 +720,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     paddingVertical: 15,
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
   },
   addExpensesButton: {
     paddingHorizontal: 30,
@@ -858,6 +733,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontStyle: "italic",
   },
+
   input: {
     marginBottom: 20,
     borderRadius: 12,
@@ -914,38 +790,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  // Progress bar styles
-  progressContainer: {
-    alignItems: "center",
-    marginVertical: 20,
-    width: "80%",
-  },
-  progressBar: {
-    width: "100%",
-    height: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-    borderRadius: 4,
-    overflow: "hidden",
-    marginBottom: 10,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#ffffff",
-    borderRadius: 4,
-  },
-  progressText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
+
   // Security notice styles
   securityCard: {
     marginBottom: 20,
     elevation: 4,
     borderRadius: 12,
-    backgroundColor: "#fff3cd",
-    borderColor: "#ffeaa7",
   },
   securityHeader: {
     flexDirection: "row",
@@ -956,31 +806,26 @@ const styles = StyleSheet.create({
   securityTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#856404",
     flex: 1,
   },
   closeButton: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "rgba(133, 100, 4, 0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
   closeButtonText: {
-    color: "#856404",
     fontSize: 16,
     fontWeight: "bold",
   },
   securityText: {
     fontSize: 14,
-    color: "#856404",
     lineHeight: 20,
     marginBottom: 8,
   },
   securityNote: {
     fontSize: 12,
-    color: "#856404",
     fontStyle: "italic",
     textAlign: "center",
   },
@@ -989,7 +834,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     borderRadius: 12,
     elevation: 4,
-    backgroundColor: "#f8f9fa",
   },
   pinSetupTitle: {
     fontSize: 20,
@@ -999,7 +843,6 @@ const styles = StyleSheet.create({
   },
   pinSetupSubtitle: {
     fontSize: 14,
-    color: "#6c757d",
     marginBottom: 20,
     textAlign: "center",
   },
