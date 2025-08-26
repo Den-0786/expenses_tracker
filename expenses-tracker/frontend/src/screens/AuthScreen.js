@@ -9,7 +9,7 @@ const AuthScreen = ({ navigation }) => {
   const { user } = useAuth();
 
   useEffect(() => {
-    // Check if user exists to determine if they're new or returning
+
     if (user) {
       setIsNewUser(false);
     }
@@ -85,6 +85,7 @@ const AuthScreen = ({ navigation }) => {
               <MaterialIcons
                 name="login"
                 size={40}
+// sourcery skip: invert-ternary
                 color={!isNewUser ? "#4CAF50" : "#FFFFFF"}
               />
             </View>

@@ -7,12 +7,11 @@ import {
   Keyboard,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { TextInput, Button, Switch } from "react-native-paper";
+import { TextInput, Button } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 
 const SignUpScreen = ({ navigation }) => {
-  const [authMethod, setAuthMethod] = useState("gmail");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +43,7 @@ const SignUpScreen = ({ navigation }) => {
 
     setIsLoading(true);
     try {
-      const result = await signUp(username.trim(), authMethod, email.trim());
+      const result = await signUp(username.trim(), "email", email.trim());
       if (result.success) {
         navigation.replace("Onboarding");
       } else {
@@ -84,74 +83,7 @@ const SignUpScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.formContainer}>
-            <View style={styles.authMethodContainer}>
-              <Text style={styles.label}>Authentication Method</Text>
-              <View style={styles.toggleContainer}>
-                <View
-                  style={[
-                    styles.toggleOption,
-                    authMethod === "gmail" && styles.toggleOptionActive,
-                  ]}
-                >
-                  <MaterialIcons
-                    name="mail"
-                    size={24}
-                    color={authMethod === "gmail" ? "#4CAF50" : "#BDBDBD"}
-                  />
-                  <Text
-                    style={[
-                      styles.toggleText,
-                      authMethod === "gmail" && styles.toggleTextActive,
-                    ]}
-                  >
-                    Gmail
-                  </Text>
-                </View>
-
-                <Switch
-                  value={authMethod === "apple"}
-                  onValueChange={(value) =>
-                    setAuthMethod(value ? "apple" : "gmail")
-                  }
-                  color="#FFFFFF"
-                  trackColor={{
-                    false: "rgba(255,255,255,0.3)",
-                    true: "#FFFFFF",
-                  }}
-                  thumbColor={authMethod === "apple" ? "#4CAF50" : "#FFFFFF"}
-                />
-
-                <View
-                  style={[
-                    styles.toggleOption,
-                    authMethod === "apple" && styles.toggleOptionActive,
-                  ]}
-                >
-                  <MaterialIcons
-                    name="apple"
-                    size={24}
-                    color={authMethod === "apple" ? "#4CAF50" : "#BDBDBD"}
-                  />
-                  <Text
-                    style={[
-                      styles.toggleText,
-                      authMethod === "apple" && styles.toggleTextActive,
-                    ]}
-                  >
-                    Apple
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.authMethodNote}>
-                {authMethod === "gmail"
-                  ? "You'll sign in with your Gmail account"
-                  : "You'll sign in with your Apple ID"}
-              </Text>
-            </View>
-
             <View style={styles.inputContainer}>
-              {/* <Text style={styles.label}>Username</Text> */}
               <TextInput
                 mode="outlined"
                 value={username}
@@ -172,7 +104,6 @@ const SignUpScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.inputContainer}>
-              {/* <Text style={styles.label}>Email</Text> */}
               <TextInput
                 mode="outlined"
                 value={email}
@@ -251,57 +182,18 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: "100%",
-    marginBottom: 30,
+    marginBottom: 20,
   },
-  authMethodContainer: {
-    marginBottom: 25,
+
+  inputContainer: {
+    marginBottom: 35,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFFFFF",
-    marginBottom: 10,
-  },
-  toggleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 25,
-    padding: 1,
-    marginBottom: 10,
-  },
-  toggleOption: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    gap: 8,
-  },
-  toggleOptionActive: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 20,
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#BDBDBD",
-  },
-  toggleTextActive: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-  },
-  authMethodNote: {
+  inputSubtitle: {
     fontSize: 14,
     color: "#FFFFFF",
     opacity: 0.8,
-    marginTop: 8,
+    marginBottom: 10,
     textAlign: "center",
-  },
-  inputContainer: {
-    marginBottom: 15,
   },
   input: {
     backgroundColor: "rgba(255,255,255,0.1)",
@@ -314,13 +206,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   signUpButton: {
-    marginTop: 10,
+    marginTop: 35,
     borderRadius: 12,
     paddingVertical: 8,
   },
   buttonLabel: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#FFFFFF",
   },
   footer: {
     flex: 1,
@@ -339,6 +232,7 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     fontWeight: "600",
+    color: "#FFFFFF",
   },
 });
 

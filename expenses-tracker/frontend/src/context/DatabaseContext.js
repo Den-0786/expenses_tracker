@@ -203,7 +203,7 @@ export const DatabaseProvider = ({ children }) => {
     }
   };
 
-  // TODO: Neon connection setup function
+  // Neon connection setup function
   const setupNeonConnection = async () => {
     try {
       // This function will be implemented when Neon is ready
@@ -231,6 +231,53 @@ export const DatabaseProvider = ({ children }) => {
       console.error("Error setting up Neon connection:", error);
       return false;
     }
+  };
+
+  // Function to prepare Neon PostgreSQL queries for income
+  const prepareNeonIncomeQueries = () => {
+    // These queries will be used when Neon is connected
+    const queries = {
+      // Get income by date range
+      getIncomeByDateRange: `
+        SELECT * FROM income 
+        WHERE date BETWEEN $1 AND $2 
+        ORDER BY date DESC, created_at DESC
+      `,
+
+      // Get all income
+      getAllIncome: `
+        SELECT * FROM income 
+        ORDER BY date DESC, created_at DESC
+      `,
+
+      // Get income by specific date
+      getIncomeByDate: `
+        SELECT * FROM income 
+        WHERE date = $1 
+        ORDER BY created_at DESC
+      `,
+
+      // Add new income
+      addIncome: `
+        INSERT INTO income (amount, description, category, source, date, created_at, updated_at) 
+        VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
+        RETURNING id
+      `,
+
+      // Update income
+      updateIncome: `
+        UPDATE income 
+        SET amount = $1, description = $2, category = $3, source = $4, updated_at = NOW() 
+        WHERE id = $5
+      `,
+
+      // Delete income
+      deleteIncome: `
+        DELETE FROM income WHERE id = $1
+      `,
+    };
+
+    return queries;
   };
 
   const saveUserSettings = (
@@ -390,6 +437,167 @@ export const DatabaseProvider = ({ children }) => {
           `INSERT INTO income (amount, description, category, source, date, created_at, updated_at) 
            VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
           [amount, description, category, source, date],
+          (_, result) => resolve(result),
+          (_, error) => reject(error)
+        );
+      });
+    });
+  };
+
+  // Get income by specific date
+  const getIncomeByDate = (date) => {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      if (db.mock) {
+        console.log("Mock: Getting income for date", date);
+        const incomeForDate = db.mockData.income.filter(
+          (income) => income.date === date
+        );
+        resolve(incomeForDate);
+        return;
+      }
+
+      db.transaction((tx) => {
+        tx.executeSql(
+          "SELECT * FROM income WHERE date = ? ORDER BY created_at DESC",
+          [date],
+          (_, { rows }) => resolve(rows._array),
+          (_, error) => reject(error)
+        );
+      });
+    });
+  };
+
+  // Get income by date range
+  const getIncomeByDateRange = (startDate, endDate) => {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      if (db.mock) {
+        console.log("Mock: Getting income for date range", {
+          startDate,
+          endDate,
+        });
+        const incomeInRange = db.mockData.income.filter(
+          (income) => income.date >= startDate && income.date <= endDate
+        );
+        resolve(incomeInRange);
+        return;
+      }
+
+      db.transaction((tx) => {
+        tx.executeSql(
+          "SELECT * FROM income WHERE date BETWEEN ? AND ? ORDER BY date DESC, created_at DESC",
+          [startDate, endDate],
+          (_, { rows }) => resolve(rows._array),
+          (_, error) => reject(error)
+        );
+      });
+    });
+  };
+
+  // Get all income
+  const getAllIncome = () => {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      if (db.mock) {
+        console.log("Mock: Getting all income");
+        resolve(db.mockData.income || []);
+        return;
+      }
+
+      db.transaction((tx) => {
+        tx.executeSql(
+          "SELECT * FROM income ORDER BY date DESC, created_at DESC",
+          [],
+          (_, { rows }) => resolve(rows._array),
+          (_, error) => reject(error)
+        );
+      });
+    });
+  };
+
+  // Update income
+  const updateIncome = (id, amount, description, category, source) => {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      if (db.mock) {
+        console.log("Mock: Updating income", {
+          id,
+          amount,
+          description,
+          category,
+          source,
+        });
+        const incomeIndex = db.mockData.income.findIndex(
+          (inc) => inc.id === id
+        );
+        if (incomeIndex !== -1) {
+          db.mockData.income[incomeIndex] = {
+            ...db.mockData.income[incomeIndex],
+            amount,
+            description,
+            category,
+            source,
+            updated_at: new Date().toISOString(),
+          };
+        }
+        resolve({ rowsAffected: 1 });
+        return;
+      }
+
+      db.transaction((tx) => {
+        tx.executeSql(
+          `UPDATE income 
+           SET amount = ?, description = ?, category = ?, source = ?, updated_at = datetime('now') 
+           WHERE id = ?`,
+          [amount, description, category, source, id],
+          (_, result) => resolve(result),
+          (_, error) => reject(error)
+        );
+      });
+    });
+  };
+
+  // Delete income
+  const deleteIncome = (id) => {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      if (db.mock) {
+        console.log("Mock: Deleting income", { id });
+        const incomeIndex = db.mockData.income.findIndex(
+          (inc) => inc.id === id
+        );
+        if (incomeIndex !== -1) {
+          db.mockData.income.splice(incomeIndex, 1);
+        }
+        resolve({ rowsAffected: 1 });
+        return;
+      }
+
+      db.transaction((tx) => {
+        tx.executeSql(
+          "DELETE FROM income WHERE id = ?",
+          [id],
           (_, result) => resolve(result),
           (_, error) => reject(error)
         );
@@ -910,7 +1118,7 @@ export const DatabaseProvider = ({ children }) => {
 
       if (db.mock) {
         console.log("Mock: Updating note", note);
-        const noteIndex = db.mockData.notes.findIndex(n => n.id === note.id);
+        const noteIndex = db.mockData.notes.findIndex((n) => n.id === note.id);
         if (noteIndex !== -1) {
           db.mockData.notes[noteIndex] = {
             ...db.mockData.notes[noteIndex],
@@ -944,7 +1152,7 @@ export const DatabaseProvider = ({ children }) => {
 
       if (db.mock) {
         console.log("Mock: Deleting note", noteId);
-        const noteIndex = db.mockData.notes.findIndex(n => n.id === noteId);
+        const noteIndex = db.mockData.notes.findIndex((n) => n.id === noteId);
         if (noteIndex !== -1) {
           db.mockData.notes.splice(noteIndex, 1);
         }
@@ -969,10 +1177,16 @@ export const DatabaseProvider = ({ children }) => {
     isReady,
     db,
     setupNeonConnection,
+    prepareNeonIncomeQueries,
     saveUserSettings,
     getUserSettings,
     addExpense,
     addIncome,
+    getIncomeByDate,
+    getIncomeByDateRange,
+    getAllIncome,
+    updateIncome,
+    deleteIncome,
     getExpensesByDate,
     getExpensesByDateRange,
     updateExpense,

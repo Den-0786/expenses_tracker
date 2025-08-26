@@ -51,15 +51,15 @@ export const AuthProvider = ({ children }) => {
         authMethod,
         createdAt: new Date().toISOString(),
       };
-      
-      await AsyncStorage.setItem('user', JSON.stringify(newUser));
+
+      await AsyncStorage.setItem("user", JSON.stringify(newUser));
       setUser(newUser);
       setIsAuthenticated(true);
       setHasCompletedOnboarding(false);
-      
+
       return { success: true };
     } catch (error) {
-      console.error('Error during sign up:', error);
+      console.error("Error during sign up:", error);
       return { success: false, error: error.message };
     }
   };
@@ -67,6 +67,15 @@ export const AuthProvider = ({ children }) => {
   const signIn = async (pin) => {
     try {
       const storedPin = await AsyncStorage.getItem("userPin");
+
+      // Development mode: Allow "1234" as default PIN if no stored PIN exists
+      if (!storedPin && pin === "1234") {
+        // Set the default PIN for future use
+        await AsyncStorage.setItem("userPin", "1234");
+        setIsAuthenticated(true);
+        return { success: true };
+      }
+
       if (storedPin === pin) {
         setIsAuthenticated(true);
         return { success: true };

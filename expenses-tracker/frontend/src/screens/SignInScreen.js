@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -7,16 +7,52 @@ import {
   Keyboard,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { TextInput, Button, Switch } from "react-native-paper";
+import { TextInput, Button, Portal, Modal, Title } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 
 const SignInScreen = ({ navigation }) => {
-  const [authMethod, setAuthMethod] = useState("pin"); 
-  const [pin, setPin] = useState("");
+  const [pin, setPin] = useState("1234");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showForgotPinModal, setShowForgotPinModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
   const { signIn } = useAuth();
+
+  // Auto-hide error after 3 seconds
+  const errorTimeoutRef = useRef(null);
+
+  // Clear error when user starts typing
+  const handlePinChange = (text) => {
+    setPin(text);
+    if (error) {
+      setError("");
+    }
+  };
+
+  // Auto-hide error after 3 seconds
+  useEffect(() => {
+    if (error) {
+      // Clear any existing timeout
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+
+      // Set new timeout to hide error after 3 seconds
+      errorTimeoutRef.current = setTimeout(() => {
+        setError("");
+      }, 3000);
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    };
+  }, [error]);
 
   const handleSignIn = async () => {
     if (!pin.trim()) {
@@ -30,7 +66,8 @@ const SignInScreen = ({ navigation }) => {
     try {
       const result = await signIn(pin.trim());
       if (result.success) {
-        // Navigate to onboarding first
+        // Clear any error and navigate to onboarding first
+        setError("");
         navigation.replace("Onboarding");
       } else {
         setError(result.error || "Invalid PIN");
@@ -44,8 +81,37 @@ const SignInScreen = ({ navigation }) => {
     }
   };
 
-  const handleBiometricAuth = async () => {
-    setError("Biometric authentication not implemented yet");
+  const handleForgotPin = () => {
+    setShowForgotPinModal(true);
+    setError("");
+    setSuccessMessage("");
+    // Clear any existing error timeout
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+    }
+  };
+
+  const handleResetPin = async () => {
+    if (!resetEmail.trim()) {
+      setError("Please enter your email address");
+      return;
+    }
+
+    setResetLoading(true);
+    setError("");
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      setShowForgotPinModal(false);
+      setResetEmail("");
+      setError("");
+      setSuccessMessage("PIN reset instructions sent to your email");
+    } catch (error) {
+      setError("Failed to send reset instructions. Please try again.");
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   const dismissKeyboard = () => {
@@ -68,115 +134,47 @@ const SignInScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.formContainer}>
-            <View style={styles.authMethodContainer}>
-              <Text style={styles.label}>Sign In Method</Text>
-              <View style={styles.toggleContainer}>
-                <View
-                  style={[
-                    styles.toggleOption,
-                    authMethod === "pin" && styles.toggleOptionActive,
-                  ]}
-                >
-                  <MaterialIcons
-                    name="lock"
-                    size={24}
-                    color={authMethod === "pin" ? "#4CAF50" : "#BDBDBD"}
-                  />
-                  <Text
-                    style={[
-                      styles.toggleText,
-                      authMethod === "pin" && styles.toggleTextActive,
-                    ]}
-                  >
-                    PIN
-                  </Text>
-                </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.pinLabel}>Enter Your PIN</Text>
+              <TextInput
+                mode="outlined"
+                value={pin}
+                onChangeText={handlePinChange}
+                placeholder="Enter your PIN"
+                style={styles.input}
+                outlineColor="rgba(255,255,255,0.5)"
+                activeOutlineColor="#FFFFFF"
+                textColor="#FFFFFF"
+                placeholderTextColor="rgba(255,255,255,0.7)"
+                keyboardType="numeric"
+                secureTextEntry
+                maxLength={6}
+                left={
+                  <TextInput.Icon icon="lock" color="rgba(255,255,255,0.7)" />
+                }
+              />
 
-                <Switch
-                  value={authMethod === "biometric"}
-                  onValueChange={(value) =>
-                    setAuthMethod(value ? "biometric" : "pin")
-                  }
-                  color="#FFFFFF"
-                  trackColor={{
-                    false: "rgba(255,255,255,0.3)",
-                    true: "#FFFFFF",
-                  }}
-                  thumbColor={
-                    authMethod === "biometric" ? "#4CAF50" : "#FFFFFF"
-                  }
-                />
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+              {successMessage ? (
+                <Text style={styles.successText}>{successMessage}</Text>
+              ) : null}
 
-                <View
-                  style={[
-                    styles.toggleOption,
-                    authMethod === "biometric" && styles.toggleOptionActive,
-                  ]}
-                >
-                  <MaterialIcons
-                    name="fingerprint"
-                    size={24}
-                    color={authMethod === "biometric" ? "#4CAF50" : "#BDBDBD"}
-                  />
-                  <Text
-                    style={[
-                      styles.toggleText,
-                      authMethod === "biometric" && styles.toggleTextActive,
-                    ]}
-                  >
-                    Biometric
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.authMethodNote}>
-                {authMethod === "pin"
-                  ? "Enter your PIN to sign in"
-                  : "Use fingerprint or face ID to sign in"}
-              </Text>
+              {/* Forgot PIN Button */}
+              <Button
+                mode="text"
+                onPress={handleForgotPin}
+                textColor="rgba(255,255,255,0.8)"
+                labelStyle={styles.forgotPinText}
+                style={styles.forgotPinButton}
+              >
+                Forgot PIN?
+              </Button>
             </View>
-
-            {authMethod === "pin" ? (
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Enter PIN</Text>
-                <TextInput
-                  mode="outlined"
-                  value={pin}
-                  onChangeText={setPin}
-                  placeholder="Enter your PIN"
-                  style={styles.input}
-                  outlineColor="rgba(255,255,255,0.5)"
-                  activeOutlineColor="#FFFFFF"
-                  textColor="#FFFFFF"
-                  placeholderTextColor="rgba(255,255,255,0.7)"
-                  keyboardType="numeric"
-                  secureTextEntry
-                  maxLength={6}
-                  left={
-                    <TextInput.Icon icon="lock" color="rgba(255,255,255,0.7)" />
-                  }
-                />
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
-              </View>
-            ) : (
-              <View style={styles.biometricContainer}>
-                <View style={styles.biometricButton}>
-                  <MaterialIcons name="fingerprint" size={60} color="#FFFFFF" />
-                  <Text style={styles.biometricText}>
-                    Authentication
-                  </Text>
-                </View>
-              </View>
-            )}
 
             <Button
               mode="contained"
-              onPress={
-                authMethod === "pin" ? handleSignIn : handleBiometricAuth
-              }
-              disabled={
-                authMethod === "pin" ? !pin.trim() || isLoading : isLoading
-              }
+              onPress={handleSignIn}
+              disabled={!pin.trim() || isLoading}
               loading={isLoading}
               style={styles.signInButton}
               buttonColor="#4CAF50"
@@ -199,6 +197,61 @@ const SignInScreen = ({ navigation }) => {
             </Button>
           </View>
         </View>
+
+        {/* Forgot PIN Modal */}
+        <Portal>
+          <Modal
+            visible={showForgotPinModal}
+            onDismiss={() => setShowForgotPinModal(false)}
+            contentContainerStyle={styles.modalContainer}
+          >
+            <View style={styles.modalContent}>
+              <MaterialIcons
+                name="lock-reset"
+                size={60}
+                color="#4CAF50"
+                style={styles.modalIcon}
+              />
+
+              <Title style={styles.modalTitle}>Reset Your PIN</Title>
+              <Text style={styles.modalSubtitle}>
+                Enter your email address to receive PIN reset instructions
+              </Text>
+
+              <TextInput
+                mode="outlined"
+                value={resetEmail}
+                onChangeText={setResetEmail}
+                placeholder="Enter your email"
+                style={styles.modalInput}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                left={<TextInput.Icon icon="email" color="#666" />}
+              />
+
+              <View style={styles.modalButtons}>
+                <Button
+                  mode="outlined"
+                  onPress={() => setShowForgotPinModal(false)}
+                  style={styles.modalButton}
+                  textColor="#666"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={handleResetPin}
+                  loading={resetLoading}
+                  disabled={!resetEmail.trim() || resetLoading}
+                  style={styles.modalButton}
+                  buttonColor="#4CAF50"
+                >
+                  {resetLoading ? "Sending..." : "Send Reset"}
+                </Button>
+              </View>
+            </View>
+          </Modal>
+        </Portal>
       </LinearGradient>
     </TouchableWithoutFeedback>
   );
@@ -211,11 +264,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 30,
-    paddingTop: 80,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
   header: {
     alignItems: "center",
-    marginBottom: 50,
+    marginBottom: 60,
   },
   title: {
     fontSize: 32,
@@ -233,10 +287,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: "100%",
-    marginBottom: 30,
-  },
-  authMethodContainer: {
-    marginBottom: 25,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
@@ -244,91 +295,70 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     marginBottom: 10,
   },
-  toggleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 25,
-    padding: 3,
-    marginBottom: 10,
-  },
-  toggleOption: {
-    flex: 1,
-    flexDirection:"row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap:15,
-  },
-  toggleOptionActive: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 20,
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#BDBDBD",
-    marginTop: 3,
-  },
-  toggleTextActive: {
+  pinLabel: {
+    fontSize: 20,
+    fontWeight: "bold",
     color: "#FFFFFF",
-    fontWeight: "600",
+    marginBottom: 8,
+    textAlign: "center",
   },
-  authMethodNote: {
+  pinSubtitle: {
     fontSize: 14,
     color: "#FFFFFF",
     opacity: 0.8,
+    marginBottom: 25,
     textAlign: "center",
-    marginTop: 8,
+    lineHeight: 20,
+  },
+  inputSubtitle: {
+    fontSize: 14,
+    color: "#FFFFFF",
+    opacity: 0.8,
+    marginBottom: 15,
+    textAlign: "center",
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 30,
+    alignItems: "center",
   },
   input: {
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 12,
+    width: "100%",
+    marginBottom: 20,
   },
   errorText: {
     color: "#FFCDD2",
     fontSize: 14,
-    marginTop: 8,
+    marginTop: 12,
+    marginBottom: 8,
     textAlign: "center",
   },
-  biometricContainer: {
-    marginBottom: 20,
-    alignItems: "center",
-  },
-  biometricButton: {
-    alignItems: "center",
-    padding: 10,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
-    borderStyle: "dashed",
-  },
-  biometricText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    marginTop: 15,
+  successText: {
+    color: "#C8E6C9",
+    fontSize: 14,
+    marginTop: 12,
+    marginBottom: 8,
     textAlign: "center",
   },
+
   signInButton: {
-    marginTop: 10,
+    marginTop: -15,
     borderRadius: 12,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    width: "100%",
+    marginBottom: 10,
   },
   buttonLabel: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#FFFFFF",
   },
   footer: {
-    flex: 1,
-    flexDirection:"row",
-    justifyContent:"center",
+    flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
-    marginTop: -15,
+    marginTop: 20,
     marginBottom: 20,
   },
   footerText: {
@@ -340,6 +370,62 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  // Forgot PIN Button styles
+  forgotPinButton: {
+    marginTop: 20,
+    alignSelf: "center",
+    paddingVertical: 8,
+  },
+  forgotPinText: {
+    fontSize: 14,
+    textDecorationLine: "underline",
+    color: "rgba(255,255,255,0.8)",
+  },
+  // Modal styles
+  modalContainer: {
+    backgroundColor: "white",
+    margin: 20,
+    borderRadius: 20,
+    padding: 0,
+    elevation: 5,
+  },
+  modalContent: {
+    padding: 30,
+    alignItems: "center",
+  },
+  modalIcon: {
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 25,
+    lineHeight: 22,
+  },
+  modalInput: {
+    width: "100%",
+    marginBottom: 25,
+    backgroundColor: "#f5f5f5",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    gap: 15,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 12,
   },
 });
 

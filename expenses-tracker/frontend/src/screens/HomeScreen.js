@@ -110,17 +110,17 @@ const HomeScreen = () => {
 
       // Yearly expenses
       const yearStart = format(
-        new Date(new Date().getFullYear(), 0, 1),
+        new Date(new Date().getFullYear(), 0, 1), // January 1st
         "yyyy-MM-dd"
       );
       const yearEnd = format(
-        new Date(new Date().getFullYear(), 11, 31),
+        new Date(new Date().getFullYear(), 11, 0), // December 31st (day 0 of next month = last day of current month)
         "yyyy-MM-dd"
       );
       const yearExp = await getExpensesByDateRange(yearStart, yearEnd);
       setYearlyExpenses(yearExp);
     } catch (error) {
-      console.error("Error loading data:", error);
+      // Silently handle error
     }
   };
 
@@ -185,7 +185,6 @@ const HomeScreen = () => {
 
       showSnackbar("Expense added successfully!", "success");
     } catch (error) {
-      console.error("Error adding expense:", error);
       showSnackbar("Failed to add expense. Please try again.", "error");
     }
   };
@@ -250,20 +249,28 @@ const HomeScreen = () => {
     }
   };
 
+  // Helper function to check if a year is a leap year
+  const isLeapYear = (year) => {
+    return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  };
+
   const getCurrentPeriodDays = () => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+
     switch (activeTab) {
       case "daily":
         return 1;
       case "weekly":
         return 7;
       case "monthly":
-        return new Date(
-          new Date().getFullYear(),
-          new Date().getMonth() + 1,
-          0
-        ).getDate();
+        // Get the actual number of days in the current month
+        // This handles months with 28, 29, 30, or 31 days automatically
+        return new Date(currentYear, currentMonth + 1, 0).getDate();
       case "yearly":
-        return new Date(new Date().getFullYear(), 11, 31).getDate();
+        // Return 365 for regular years, 366 for leap years
+        return isLeapYear(currentYear) ? 366 : 365;
       default:
         return 1;
     }
@@ -745,6 +752,13 @@ const HomeScreen = () => {
                   {getCurrentPeriodDays()}
                 </Text>
               </View>
+              <Text style={styles.summaryNote}>
+                {activeTab === "monthly"
+                  ? `📅 ${getCurrentPeriodDays()} days in ${format(new Date(), "MMMM")}`
+                  : activeTab === "yearly"
+                    ? `📅 ${getCurrentPeriodDays()} days in ${new Date().getFullYear()}${isLeapYear(new Date().getFullYear()) ? " (Leap Year)" : ""}`
+                    : ""}
+              </Text>
             </Card.Content>
           </Card>
         </ScrollView>
@@ -1042,6 +1056,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#333",
+  },
+  summaryNote: {
+    fontSize: 12,
+    color: "#666",
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 8,
   },
   fab: {
     position: "absolute",

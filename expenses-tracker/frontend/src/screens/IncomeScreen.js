@@ -32,7 +32,7 @@ import {
 import { useDatabase } from "../context/DatabaseContext";
 
 const IncomeScreen = () => {
-  const { addIncome, getExpensesByDateRange } = useDatabase();
+  const { addIncome, getIncomeByDateRange, getAllIncome } = useDatabase();
 
   const [income, setIncome] = useState([]);
   const [filteredIncome, setFilteredIncome] = useState([]);
@@ -41,8 +41,6 @@ const IncomeScreen = () => {
   const [newIncome, setNewIncome] = useState({
     amount: "",
     description: "",
-    category: "",
-    source: "",
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
@@ -84,11 +82,17 @@ const IncomeScreen = () => {
           startDate = "2020-01-01"; // All time
       }
 
-      // TODO: Implement getIncomeByDateRange in DatabaseContext
-      // For now, set empty array until database function is available
-      setIncome([]);
+      // Load income data based on date range
+      if (dateRange === "all") {
+        const allIncome = await getAllIncome();
+        setIncome(allIncome);
+      } else {
+        const incomeData = await getIncomeByDateRange(startDate, endDate);
+        setIncome(incomeData);
+      }
     } catch (error) {
-      console.error("Error loading income:", error);
+      // Silently handle error
+      setIncome([]);
     }
   };
 
@@ -139,22 +143,35 @@ const IncomeScreen = () => {
       return;
     }
 
+    // Validate amount format
+    if (!/^\d*\.?\d{0,2}$/.test(newIncome.amount)) {
+      showSnackbar("Please enter a valid amount.", "error");
+      return;
+    }
+
+    const amount = parseFloat(newIncome.amount);
+    if (isNaN(amount) || amount <= 0) {
+      showSnackbar("Please enter a valid amount greater than 0.", "error");
+      return;
+    }
+
     try {
       await addIncome(
-        parseFloat(newIncome.amount),
+        amount,
         newIncome.description,
-        newIncome.category || "General",
-        newIncome.source || "Unknown",
+        "General", // Default category
+        newIncome.description, // Use description as source
         format(new Date(), "yyyy-MM-dd")
       );
 
-      setNewIncome({ amount: "", description: "", category: "", source: "" });
+      setNewIncome({ amount: "", description: "" });
       setAddIncomeModalVisible(false);
+
+      // Refresh income data to show the newly added income
       await loadIncome();
 
       showSnackbar("Income added successfully!", "success");
     } catch (error) {
-      console.error("Error adding income:", error);
       showSnackbar("Failed to add income. Please try again.", "error");
     }
   };
@@ -181,10 +198,15 @@ const IncomeScreen = () => {
   };
 
   const getTotalAmount = () => {
-    return filteredIncome.reduce((total, income) => total + income.amount, 0);
+    if (!filteredIncome || filteredIncome.length === 0) return 0;
+    return filteredIncome.reduce(
+      (total, income) => total + (income.amount || 0),
+      0
+    );
   };
 
   const getUniqueCategories = () => {
+    if (!income || income.length === 0) return [];
     const categories = [
       ...new Set(income.map((income) => income.category || "General")),
     ];
@@ -192,6 +214,7 @@ const IncomeScreen = () => {
   };
 
   const groupIncomeByDate = () => {
+    if (!filteredIncome || filteredIncome.length === 0) return {};
     const grouped = {};
     filteredIncome.forEach((income) => {
       const date = income.date;
@@ -352,50 +375,52 @@ const IncomeScreen = () => {
           contentContainerStyle={styles.modal}
         >
           <Title style={styles.modalTitle}>Add Income</Title>
+          <Text style={styles.modalSubtitle}>
+            Enter the amount and describe the income source
+          </Text>
 
           <TextInput
             label="Amount"
             value={newIncome.amount}
-            onChangeText={(text) =>
-              setNewIncome({ ...newIncome, amount: text })
-            }
+            onChangeText={(text) => {
+              // Real-time validation: only allow numbers, decimal point, and backspace
+              const numericText = text.replace(/[^0-9.]/g, "");
+              // Ensure only one decimal point
+              const parts = numericText.split(".");
+              if (parts.length <= 2) {
+                setNewIncome({ ...newIncome, amount: numericText });
+              }
+            }}
             keyboardType="numeric"
             mode="outlined"
-            style={styles.modalInput}
+            style={[
+              styles.modalInput,
+              newIncome.amount &&
+                !/^\d*\.?\d{0,2}$/.test(newIncome.amount) &&
+                styles.errorInput,
+            ]}
             placeholder="0.00"
+            left={<TextInput.Affix text="$" />}
+            error={
+              newIncome.amount && !/^\d*\.?\d{0,2}$/.test(newIncome.amount)
+            }
           />
 
+          {newIncome.amount && !/^\d*\.?\d{0,2}$/.test(newIncome.amount) && (
+            <Text style={styles.validationError}>
+              Please enter a valid amount (e.g., 100.50)
+            </Text>
+          )}
+
           <TextInput
-            label="Description"
+            label="Description/Source"
             value={newIncome.description}
             onChangeText={(text) =>
               setNewIncome({ ...newIncome, description: text })
             }
             mode="outlined"
             style={styles.modalInput}
-            placeholder="What is this income for?"
-          />
-
-          <TextInput
-            label="Category (Optional)"
-            value={newIncome.category}
-            onChangeText={(text) =>
-              setNewIncome({ ...newIncome, category: text })
-            }
-            mode="outlined"
-            style={styles.modalInput}
-            placeholder="Salary, Freelance, etc."
-          />
-
-          <TextInput
-            label="Source (Optional)"
-            value={newIncome.source}
-            onChangeText={(text) =>
-              setNewIncome({ ...newIncome, source: text })
-            }
-            mode="outlined"
-            style={styles.modalInput}
-            placeholder="Company name, client, etc."
+            placeholder="Salary from Company, Freelance work, etc."
           />
 
           <View style={styles.modalButtons}>
@@ -607,12 +632,29 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 10,
     textAlign: "center",
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 20,
   },
   modalInput: {
     marginBottom: 15,
     backgroundColor: "#ffffff",
+  },
+  errorInput: {
+    borderColor: "#F44336",
+  },
+  validationError: {
+    color: "#F44336",
+    fontSize: 12,
+    marginTop: -10,
+    marginBottom: 15,
+    marginLeft: 4,
   },
   modalButtons: {
     flexDirection: "row",

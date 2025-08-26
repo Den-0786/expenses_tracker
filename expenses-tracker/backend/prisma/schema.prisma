@@ -1,15 +1,100 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  Int       @id @default(autoincrement())
+  username            String    @unique
+  email               String    @unique
+  pin                 String
+  hasCompletedOnboarding Boolean @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  // Relations
+  expenses            Expense[]
+  income              Income[]
+  budgets             Budget[]
+  notes               Note[]
+  categories          Category[]
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  type        String    // "expense" or "income"
+  color       String?   // Hex color code
+  icon        String?   // Icon name
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  expenses    Expense[]
+  income      Income[]
+}
+
+model Expense {
+  id          Int       @id @default(autoincrement())
+  title       String
+  amount      Float
+  date        DateTime  @default(now())
+  description String?
+  categoryId  Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  category    Category? @relation(fields: [categoryId], references: [id])
+}
+
+model Income {
+  id          Int       @id @default(autoincrement())
+  amount      Float
+  description String?
+  source      String?
+  date        DateTime  @default(now())
+  categoryId  Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  category    Category? @relation(fields: [categoryId], references: [id])
+}
+
+model Budget {
+  id          Int       @id @default(autoincrement())
+  amount      Float
+  period      String    // "daily", "weekly", "monthly", "yearly"
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+}
+
+model Note {
+  id          Int       @id @default(autoincrement())
+  title       String
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
 }

@@ -417,8 +417,12 @@ const SettingsScreen = () => {
     try {
       await signOut();
       showSnackbar("Signed out successfully", "success");
-      // Navigate to SignUp page after sign out
-      navigation.replace("SignUp");
+      // Navigate to SignIn page after sign out (user already has account)
+      // Reset the entire navigation stack to prevent back navigation
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "SignIn" }],
+      });
     } catch (error) {
       showSnackbar("Error signing out", "error");
     }

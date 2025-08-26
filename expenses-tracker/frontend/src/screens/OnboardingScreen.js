@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import {
   View,
   Text,
@@ -62,9 +63,7 @@ const OnboardingScreen = () => {
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
-  const [pinStep, setPinStep] = useState("pin"); // "pin" or "confirm"
-
-  // Removed Animated reference since we're not using animations
+  const [pinStep, setPinStep] = useState("pin");
 
   useEffect(() => {
     if (isReady) {
@@ -72,24 +71,18 @@ const OnboardingScreen = () => {
     }
   }, [isReady]);
 
-  // Security notice is now managed independently in settings
-  // No auto-hiding logic here
-
   const checkExistingSettings = async () => {
     try {
       const settings = await getUserSettings();
       setUserSettings(settings);
-      // Don't auto-redirect if user is coming from settings to edit
-      // Only redirect if this is the initial app launch
       if (settings && !navigation.isFocused() && !navigation.canGoBack()) {
         navigation.replace("MainTabs");
       }
     } catch (error) {
-      console.error("Error checking settings:", error);
+      // Silently handle error
     }
   };
 
-  // Populate form with existing settings when editing
   useEffect(() => {
     if (userSettings) {
       setPaymentFrequency(userSettings.payment_frequency || "monthly");
@@ -136,11 +129,9 @@ const OnboardingScreen = () => {
       await scheduleWeeklyReminder();
       await scheduleMonthlyReminder();
 
-      // Show PIN setup after payment setup
       setShowPinSetup(true);
       setLoading(false);
     } catch (error) {
-      console.error("Error saving settings:", error);
       showSnackbar("Failed to save settings. Please try again.", "error");
       setLoading(false);
     }
@@ -148,14 +139,12 @@ const OnboardingScreen = () => {
 
   const handlePinSetup = async () => {
     if (pinStep === "pin") {
-      // First step: validate PIN and move to confirmation
       if (pin.length < 4) {
         showSnackbar("PIN must be at least 4 digits", "error");
         return;
       }
       setPinStep("confirm");
     } else {
-      // Second step: confirm PIN
       if (pin !== confirmPin) {
         showSnackbar("PINs do not match. Please try again.", "error");
         setConfirmPin("");
@@ -163,9 +152,11 @@ const OnboardingScreen = () => {
       }
 
       try {
-        // Set PIN and complete onboarding
         await completeOnboarding(pin);
-        showSnackbar("Setup complete! Redirecting to main app...", "success");
+        showSnackbar(
+          "Income setup complete! Redirecting to main app...",
+          "success"
+        );
         setTimeout(() => {
           navigation.replace("MainTabs");
         }, 1500);
@@ -175,11 +166,20 @@ const OnboardingScreen = () => {
     }
   };
 
+  const handleClosePinSetup = () => {
+    setShowPinSetup(false);
+    setPin("");
+    setConfirmPin("");
+    setPinStep("pin");
+  };
+
   const handleSkipPin = async () => {
     try {
-      // Complete onboarding without PIN
       await completeOnboarding();
-      showSnackbar("Setup complete! Redirecting to main app...", "success");
+      showSnackbar(
+        "Income setup complete! Redirecting to main app...",
+        "success"
+      );
       setTimeout(() => {
         navigation.replace("MainTabs");
       }, 1500);
@@ -245,6 +245,79 @@ const OnboardingScreen = () => {
           </View>
         </View>
 
+        {/* PIN Setup Modal - Positioned at top for visibility */}
+        {showPinSetup && (
+          <>
+            {/* Background overlay for better visibility */}
+            <View style={styles.pinSetupBackground} />
+            <View style={styles.pinSetupOverlay}>
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <Card style={styles.pinSetupCard}>
+                  <Card.Content>
+                    {/* Close button in top right corner */}
+                    <TouchableOpacity
+                      style={styles.pinCloseButton}
+                      onPress={handleClosePinSetup}
+                    >
+                      <Text style={styles.pinCloseButtonText}>✕</Text>
+                    </TouchableOpacity>
+
+                    <Title style={styles.pinSetupTitle}>
+                      {pinStep === "pin" ? "Set Your PIN" : "Confirm Your PIN"}
+                    </Title>
+                    <Text style={styles.pinSetupSubtitle}>
+                      {pinStep === "pin"
+                        ? "Choose a 4-6 digit PIN to secure your app"
+                        : "Re-enter your PIN to confirm"}
+                    </Text>
+
+                    <TextInput
+                      label={pinStep === "pin" ? "Enter PIN" : "Confirm PIN"}
+                      value={pinStep === "pin" ? pin : confirmPin}
+                      onChangeText={pinStep === "pin" ? setPin : setConfirmPin}
+                      keyboardType="numeric"
+                      mode="outlined"
+                      style={styles.pinInput}
+                      placeholder="PIN"
+                      maxLength={6}
+                      secureTextEntry
+                      textColor={theme.colors.text}
+                      placeholderTextColor={theme.colors.textSecondary}
+                      outlineColor={theme.colors.border}
+                      activeOutlineColor={theme.colors.primary}
+                    />
+
+                    <View style={styles.pinSetupButtons}>
+                      <Button
+                        mode="outlined"
+                        onPress={handleSkipPin}
+                        style={styles.pinSetupButton}
+                        textColor={theme.colors.textSecondary}
+                        outlineColor={theme.colors.border}
+                      >
+                        Skip PIN
+                      </Button>
+                      <Button
+                        mode="contained"
+                        onPress={handlePinSetup}
+                        disabled={
+                          (pinStep === "pin" && pin.length < 4) ||
+                          (pinStep === "confirm" && confirmPin.length < 4)
+                        }
+                        style={styles.pinSetupButton}
+                        buttonColor={theme.colors.primary}
+                        textColor={theme.colors.onPrimary}
+                      >
+                        {pinStep === "pin" ? "Continue" : "Set PIN"}
+                      </Button>
+                    </View>
+                  </Card.Content>
+                </Card>
+              </TouchableWithoutFeedback>
+            </View>
+          </>
+        )}
+
         {/* Setup Form */}
         <View style={styles.formContainer}>
           {/* Security Notice */}
@@ -295,7 +368,7 @@ const OnboardingScreen = () => {
                 <Title
                   style={[styles.setupTitle, { color: theme.colors.text }]}
                 >
-                  Setup Your Account
+                  Income & Tithing Setup
                 </Title>
                 <Text
                   style={[
@@ -303,12 +376,33 @@ const OnboardingScreen = () => {
                     { color: theme.colors.textSecondary },
                   ]}
                 >
-                  Configure your payment preferences to get started
+                  Set up your income tracking and tithing preferences
                 </Text>
 
+                <View style={styles.infoCard}>
+                  <Text
+                    style={[
+                      styles.infoText,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    📊{" "}
+                    <Text style={{ fontWeight: "bold" }}>Income Tracking:</Text>{" "}
+                    Record how much you earn for personal reference
+                  </Text>
+                  <Text
+                    style={[
+                      styles.infoText,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    ✝️ <Text style={{ fontWeight: "bold" }}>Tithing:</Text>{" "}
+                    Calculate religious giving (typically 10% of income)
+                  </Text>
+                </View>
                 <View style={styles.frequencyContainer}>
                   <Text style={[styles.label, { color: theme.colors.text }]}>
-                    How often are you paid?
+                    How often do you receive income?
                   </Text>
                   <View style={styles.frequencyButtons}>
                     {["daily", "weekly", "monthly"].map((freq) => (
@@ -353,22 +447,22 @@ const OnboardingScreen = () => {
                     style={styles.addExpensesButton}
                     buttonColor={theme.colors.secondary}
                     textColor={theme.colors.onPrimary}
-                    icon="plus"
+                    // icon="arrow-forward"
+                    Ionicons
+                    name="arrow-forward"
                   >
-                    Add Expenses
+                    To Dashboard
                   </Button>
                   <Text
                     style={[
                       styles.addExpensesText,
                       { color: theme.colors.textSecondary },
                     ]}
-                  >
-                    Skip setup and go directly to dashboard
-                  </Text>
+                  ></Text>
                 </View>
 
                 <TextInput
-                  label="Payment Amount"
+                  label="Income Amount"
                   value={paymentAmount}
                   onChangeText={setPaymentAmount}
                   keyboardType="numeric"
@@ -380,7 +474,7 @@ const OnboardingScreen = () => {
                       borderColor: theme.colors.border,
                     },
                   ]}
-                  placeholder="Enter your payment amount"
+                  placeholder="Enter your income amount"
                   left={<TextInput.Affix text="$" />}
                   textColor={theme.colors.text}
                   labelStyle={{ color: theme.colors.textSecondary }}
@@ -388,7 +482,6 @@ const OnboardingScreen = () => {
                   outlineColor={theme.colors.border}
                   activeOutlineColor={theme.colors.primary}
                 />
-
                 <View style={styles.tithingContainer}>
                   <View style={styles.tithingHeader}>
                     <Text style={[styles.label, { color: theme.colors.text }]}>
@@ -468,12 +561,12 @@ const OnboardingScreen = () => {
                             { color: theme.colors.textSecondary },
                           ]}
                         >
-                          Payment Amount:
+                          Total Income:
                         </Text>
                         <Text
                           style={[
                             styles.summaryValue,
-                            { color: theme.colors.text },
+                            { color: theme.colors.income },
                           ]}
                         >
                           ${parseFloat(paymentAmount || 0).toFixed(2)}
@@ -506,7 +599,7 @@ const OnboardingScreen = () => {
                             { color: theme.colors.textSecondary },
                           ]}
                         >
-                          Available for Expenses:
+                          Available After Tithing:
                         </Text>
                         <Text
                           style={[
@@ -532,73 +625,10 @@ const OnboardingScreen = () => {
                   buttonColor={theme.colors.accent}
                   textColor={theme.colors.onPrimary}
                 >
-                  {userSettings ? "Update Settings" : "Complete Setup"}
+                  {userSettings
+                    ? "Update Income Settings"
+                    : "Complete Income Setup"}
                 </Button>
-
-                {/* PIN Setup Step */}
-                {showPinSetup && (
-                  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <Card style={styles.pinSetupCard}>
-                      <Card.Content>
-                        <Title style={styles.pinSetupTitle}>
-                          {pinStep === "pin"
-                            ? "Set Your PIN"
-                            : "Confirm Your PIN"}
-                        </Title>
-                        <Text style={styles.pinSetupSubtitle}>
-                          {pinStep === "pin"
-                            ? "Choose a 4-6 digit PIN to secure your app"
-                            : "Re-enter your PIN to confirm"}
-                        </Text>
-
-                        <TextInput
-                          label={
-                            pinStep === "pin" ? "Enter PIN" : "Confirm PIN"
-                          }
-                          value={pinStep === "pin" ? pin : confirmPin}
-                          onChangeText={
-                            pinStep === "pin" ? setPin : setConfirmPin
-                          }
-                          keyboardType="numeric"
-                          mode="outlined"
-                          style={styles.pinInput}
-                          placeholder="PIN"
-                          maxLength={6}
-                          secureTextEntry
-                          textColor={theme.colors.text}
-                          placeholderTextColor={theme.colors.textSecondary}
-                          outlineColor={theme.colors.border}
-                          activeOutlineColor={theme.colors.primary}
-                        />
-
-                        <View style={styles.pinSetupButtons}>
-                          <Button
-                            mode="outlined"
-                            onPress={handleSkipPin}
-                            style={styles.pinSetupButton}
-                            textColor={theme.colors.textSecondary}
-                            outlineColor={theme.colors.border}
-                          >
-                            Skip PIN
-                          </Button>
-                          <Button
-                            mode="contained"
-                            onPress={handlePinSetup}
-                            disabled={
-                              (pinStep === "pin" && pin.length < 4) ||
-                              (pinStep === "confirm" && confirmPin.length < 4)
-                            }
-                            style={styles.pinSetupButton}
-                            buttonColor={theme.colors.primary}
-                            textColor={theme.colors.onPrimary}
-                          >
-                            {pinStep === "pin" ? "Continue" : "Set PIN"}
-                          </Button>
-                        </View>
-                      </Card.Content>
-                    </Card>
-                  </TouchableWithoutFeedback>
-                )}
               </Card.Content>
             </ScrollView>
           </Card>
@@ -690,8 +720,21 @@ const styles = StyleSheet.create({
   },
   setupSubtitle: {
     fontSize: 16,
-    marginBottom: 30,
+    marginBottom: 20,
     textAlign: "center",
+  },
+  infoCard: {
+    backgroundColor: "rgba(76, 175, 80, 0.1)",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 25,
+    borderLeftWidth: 4,
+    borderLeftColor: "#4CAF50",
+  },
+  infoText: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 6,
   },
   frequencyContainer: {
     marginBottom: 25,
@@ -737,6 +780,14 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: 20,
     borderRadius: 12,
+  },
+  incomeNote: {
+    fontSize: 12,
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: -15,
+    marginBottom: 20,
+    lineHeight: 16,
   },
   tithingContainer: {
     marginBottom: 25,
@@ -830,16 +881,55 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   // PIN Setup styles
+  pinSetupBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 999,
+  },
+  pinSetupOverlay: {
+    position: "absolute",
+    top: 120, // Position below header
+    left: 20,
+    right: 20,
+    zIndex: 1000,
+    elevation: 10,
+  },
   pinSetupCard: {
-    marginTop: 20,
     borderRadius: 12,
-    elevation: 4,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    transform: [{ scale: 1.02 }], // Slightly larger for prominence
+  },
+  pinCloseButton: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1001,
+  },
+  pinCloseButtonText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#666",
   },
   pinSetupTitle: {
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 8,
     textAlign: "center",
+    marginTop: 8, // Add some top margin to account for close button
   },
   pinSetupSubtitle: {
     fontSize: 14,
@@ -858,6 +948,9 @@ const styles = StyleSheet.create({
   pinSetupButton: {
     flex: 1,
     borderRadius: 12,
+  },
+  Ionicons: {
+    color: "white",
   },
 });
 

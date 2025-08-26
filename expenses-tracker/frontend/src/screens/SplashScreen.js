@@ -12,8 +12,9 @@ const SplashScreen = () => {
   const { isAuthenticated, hasCompletedOnboarding, user, isLoading } =
     useAuth();
 
-  const [currentPhase, setCurrentPhase] = useState("dots"); // "dots" or "countdown"
+  const [currentPhase, setCurrentPhase] = useState("dots");
   const [countdown, setCountdown] = useState(10);
+  const [hasNavigated, setHasNavigated] = useState(false);
 
   // Animation values for dots
   const dot1Opacity = new Animated.Value(0.3);
@@ -21,95 +22,91 @@ const SplashScreen = () => {
   const dot3Opacity = new Animated.Value(0.3);
 
   useEffect(() => {
-    // Phase 1: Animated dots for 5 seconds
     const dotsTimer = setTimeout(() => {
       setCurrentPhase("countdown");
-    }, 5000);
+    }, 3000);
 
-    // Start dots animation immediately
     const animateDots = () => {
       Animated.sequence([
         Animated.timing(dot1Opacity, {
           toValue: 1,
-          duration: 800,
+          duration: 600,
           useNativeDriver: true,
         }),
         Animated.timing(dot2Opacity, {
           toValue: 1,
-          duration: 800,
+          duration: 600,
           useNativeDriver: true,
         }),
         Animated.timing(dot3Opacity, {
           toValue: 1,
-          duration: 800,
+          duration: 600,
           useNativeDriver: true,
         }),
         Animated.timing(dot1Opacity, {
           toValue: 0.3,
-          duration: 800,
+          duration: 600,
           useNativeDriver: true,
         }),
         Animated.timing(dot2Opacity, {
           toValue: 0.3,
-          duration: 800,
+          duration: 600,
           useNativeDriver: true,
         }),
         Animated.timing(dot3Opacity, {
           toValue: 0.3,
-          duration: 800,
+          duration: 600,
           useNativeDriver: true,
         }),
       ]).start(() => animateDots());
     };
 
-    // Start animation immediately
     animateDots();
 
     return () => clearTimeout(dotsTimer);
-  }, []); // Only run once on mount
+  }, []);
 
   useEffect(() => {
-    // Phase 2: Countdown for 10 seconds
     if (currentPhase === "countdown") {
       const countdownTimer = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
-            return 0; // Set to 0 to show completion
+            return 0;
           }
           return prev - 1;
         });
       }, 1000);
 
-      // Cleanup function to clear interval
       return () => {
         clearInterval(countdownTimer);
       };
     }
   }, [currentPhase]);
-
-  // Separate useEffect to handle navigation when countdown reaches 0
   useEffect(() => {
-    if (countdown === 0 && !isLoading) {
+    if (countdown === 0 && !isLoading && !hasNavigated) {
       console.log("SplashScreen: Navigation decision", {
         isAuthenticated,
         hasCompletedOnboarding,
         user: user?.username,
       });
 
-      // Wait for auth status to be loaded before navigating
-      if (isAuthenticated && hasCompletedOnboarding) {
-        // User is authenticated and has completed onboarding, go to main app
-        console.log("SplashScreen: Navigating to MainTabs");
-        navigation.replace("MainTabs");
-      } else if (isAuthenticated && !hasCompletedOnboarding) {
-        // User is authenticated but hasn't completed onboarding
-        console.log("SplashScreen: Navigating to Onboarding");
-        navigation.replace("Onboarding");
-      } else {
-        // No user, go to SignUp
-        console.log("SplashScreen: Navigating to SignUp");
-        navigation.replace("SignUp");
+      if (isLoading) {
+        return;
       }
+
+      setHasNavigated(true); // Prevent multiple navigations
+
+      const navigationTimer = setTimeout(() => {
+        if (isAuthenticated && hasCompletedOnboarding) {
+          navigation.replace("MainTabs");
+        } else if (isAuthenticated && !hasCompletedOnboarding) {
+          navigation.replace("Onboarding");
+        } else {
+          navigation.replace("SignUp");
+        }
+      }, 500);
+
+      return () => clearTimeout(navigationTimer);
     }
   }, [
     countdown,
@@ -117,6 +114,7 @@ const SplashScreen = () => {
     isAuthenticated,
     hasCompletedOnboarding,
     navigation,
+    hasNavigated,
   ]);
 
   return (
@@ -150,9 +148,6 @@ const SplashScreen = () => {
             <Animated.View
               style={[styles.loadingDot, { opacity: dot3Opacity }]}
             />
-            {isLoading && (
-              <Text style={styles.loadingText}>Checking authentication...</Text>
-            )}
           </View>
         ) : (
           // Phase 2: Countdown
@@ -231,13 +226,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     opacity: 0.7,
     marginTop: 10,
-    textAlign: "center",
-  },
-  loadingText: {
-    fontSize: 14,
-    color: "#FFFFFF",
-    opacity: 0.8,
-    marginTop: 20,
     textAlign: "center",
   },
 });

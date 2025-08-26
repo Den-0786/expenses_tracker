@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
   RefreshControl,
+  TextInput as RNTextInput,
 } from "react-native";
 import {
   Card,
@@ -16,7 +17,6 @@ import {
   Portal,
   Modal,
   TextInput,
-  Chip,
   Searchbar,
 } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -26,11 +26,10 @@ import Toast from "react-native-toast-message";
 import { useTheme } from "../context/ThemeContext";
 import { useDatabase } from "../context/DatabaseContext";
 
-const { width } = Dimensions.get("window");
-
 const NotesScreen = () => {
   const { theme } = useTheme();
   const { getNotes, saveNote, updateNote, deleteNote } = useDatabase();
+  const scrollViewRef = useRef(null);
 
   const [notes, setNotes] = useState([]);
   const [filteredNotes, setFilteredNotes] = useState([]);
@@ -45,6 +44,13 @@ const NotesScreen = () => {
   const [body, setBody] = useState("");
   const [bodyWithNumbers, setBodyWithNumbers] = useState("");
   const [noteStructure, setNoteStructure] = useState([]);
+
+  // Track expanded notes
+  const [expandedNotes, setExpandedNotes] = useState(new Set());
+
+  // Delete confirmation modal state
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState(null);
 
   useEffect(() => {
     loadNotes();
@@ -88,7 +94,7 @@ const NotesScreen = () => {
   };
 
   const handleAddNote = async () => {
-    if (!title.trim() || !body.trim()) {
+    if (!title.trim() || !bodyWithNumbers.trim()) {
       Toast.show({
         type: "error",
         text1: "Validation Error",
@@ -100,7 +106,7 @@ const NotesScreen = () => {
     try {
       const newNote = {
         title: title.trim(),
-        body: body.trim(),
+        body: bodyWithNumbers.trim(),
         created_at: new Date().toISOString(),
       };
 
@@ -123,7 +129,7 @@ const NotesScreen = () => {
   };
 
   const handleEditNote = async () => {
-    if (!title.trim() || !body.trim()) {
+    if (!title.trim() || !bodyWithNumbers.trim()) {
       Toast.show({
         type: "error",
         text1: "Validation Error",
@@ -136,7 +142,7 @@ const NotesScreen = () => {
       const updatedNote = {
         ...selectedNote,
         title: title.trim(),
-        body: body.trim(),
+        body: bodyWithNumbers.trim(),
         updated_at: new Date().toISOString(),
       };
 
@@ -160,30 +166,14 @@ const NotesScreen = () => {
   };
 
   const handleDeleteNote = async (noteId) => {
-    Toast.show({
-      type: "info",
-      text1: "Confirm Delete",
-      text2: "Are you sure you want to delete this note?",
-      position: "center",
-      visibilityTime: 0,
-      autoHide: false,
-      topOffset: 100,
-      onPress: () => {
-        Toast.hide();
-        deleteNoteConfirmed(noteId);
-      },
-      props: {
-        onPress: () => {
-          Toast.hide();
-          deleteNoteConfirmed(noteId);
-        },
-      },
-    });
+    setNoteToDelete(noteId);
+    setDeleteModalVisible(true);
   };
 
   const deleteNoteConfirmed = async (noteId) => {
     try {
       await deleteNote(noteId);
+      setNoteToDelete(null);
       loadNotes();
       Toast.show({
         type: "success",
@@ -203,7 +193,7 @@ const NotesScreen = () => {
     setSelectedNote(note);
     setTitle(note.title);
     setBody(note.body);
-    setBodyWithNumbers(formatBodyWithNumbers(note.body));
+    setBodyWithNumbers(note.body);
     setEditModalVisible(true);
   };
 
@@ -211,15 +201,28 @@ const NotesScreen = () => {
     setTitle("");
     setBody("");
     setBodyWithNumbers("");
+    setNoteStructure([]);
   };
 
   const formatBodyWithNumbers = (bodyText) => {
     if (!bodyText) return "";
     const lines = bodyText.split("\n");
-    return lines.map((line, index) => `${index + 1}. ${line}`).join("\n");
+    return lines
+      .map((line, index) => {
+        // If line already starts with a number and period, don't add another
+        if (/^\d+\.\s*/.test(line.trim())) {
+          return line;
+        }
+        // If line is empty, don't add numbering
+        if (!line.trim()) {
+          return line;
+        }
+        // Add numbering only to lines that don't have it
+        return `${index + 1}. ${line}`;
+      })
+      .join("\n");
   };
 
-  // Initialize body with "1." when user first focuses on note body
   const handleBodyFocus = () => {
     if (!body.trim()) {
       setBody("1. ");
@@ -228,7 +231,6 @@ const NotesScreen = () => {
     }
   };
 
-  // Convert Arabic numerals to Roman numerals
   const toRomanNumeral = (num) => {
     const romanNumerals = [
       { value: 1000, numeral: "M" },
@@ -274,7 +276,6 @@ const NotesScreen = () => {
       setNoteStructure((prev) => [...prev, newSubItem]);
       mainItem.hasSubItems = true;
 
-      // Update the main item
       setNoteStructure((prev) =>
         prev.map((item) =>
           item.id === mainItemId ? { ...item, hasSubItems: true } : item
@@ -283,20 +284,16 @@ const NotesScreen = () => {
     }
   };
 
-  // Handle double tap to move between levels
   const handleDoubleTap = (itemId, currentLevel) => {
     if (currentLevel === 1) {
-      // Move to main level
       const mainItem = noteStructure.find(
         (item) => item.id === itemId
       )?.parentId;
       if (mainItem) {
-        // Focus on the main item
         const mainItemElement = noteStructure.find(
           (item) => item.id === mainItem
         );
         if (mainItemElement) {
-          // You can implement focus logic here
           Toast.show({
             type: "info",
             text1: "Navigation",
@@ -307,39 +304,53 @@ const NotesScreen = () => {
     }
   };
 
-  // Handle text input to add automatic numbering on new lines
   const handleBodyChange = (text) => {
     setBody(text);
+    setBodyWithNumbers(text);
 
-    // Generate numbered text for display with automatic numbering
-    const lines = text.split("\n");
-    const numberedLines = lines.map((line, index) => {
+    // Only process actual line breaks (Enter key), not word wrapping
+    const actualLines = text.split("\n");
+    const hasActualContent = actualLines.some((line) => {
+      const trimmed = line.trim();
+      return trimmed && !/^\d+\.\s*$/.test(trimmed);
+    });
+    const allLinesAreJustNumbers = actualLines.every((line) => {
+      const trimmed = line.trim();
+      return !trimmed || /^\d+\.\s*$/.test(trimmed);
+    });
+
+    if (!hasActualContent || allLinesAreJustNumbers) {
+      setBodyWithNumbers("");
+      setNoteStructure([]);
+      return;
+    }
+
+    // Process only actual line breaks, not word-wrapped text
+    const numberedLines = actualLines.map((line, index) => {
       const trimmedLine = line.trim();
-
-      // Skip numbering for empty lines
       if (!trimmedLine) {
         return line;
       }
-
-      // Skip numbering if line starts with double space or 0
       if (line.startsWith("  ") || line.startsWith("0")) {
         return line;
       }
-
-      // Check if line already has a number
+      if (/^\d+\.\s*$/.test(trimmedLine)) {
+        return line;
+      }
       if (/^\d+\./.test(trimmedLine)) {
-        return line; // Keep existing numbering
+        return line;
+      }
+      if (trimmedLine && !/^\d+/.test(trimmedLine)) {
+        return `${index + 1}. ${trimmedLine}`;
       }
 
-      // Add automatic numbering for new lines
-      return `${index + 1}. ${trimmedLine}`;
+      return line;
     });
 
-    // Update the body with numbers
     const numberedText = numberedLines.join("\n");
     setBodyWithNumbers(numberedText);
 
-    // Parse the numbered text to build structure
+    // Only create structure for actual line breaks
     const newStructure = [];
     let mainItemCounter = 0;
     let currentMainItem = null;
@@ -348,7 +359,6 @@ const NotesScreen = () => {
       const trimmedLine = line.trim();
 
       if (trimmedLine) {
-        // Check if it's a main item (starts with number)
         if (/^\d+\./.test(trimmedLine)) {
           mainItemCounter++;
           currentMainItem = {
@@ -359,9 +369,10 @@ const NotesScreen = () => {
             lineIndex: index,
           };
           newStructure.push(currentMainItem);
-        }
-        // Check if it's a sub-item (indented or starts with roman numeral)
-        else if (line.startsWith("  ") || /^[ivxlcdm]+\./i.test(trimmedLine)) {
+        } else if (
+          line.startsWith("  ") ||
+          /^[ivxlcdm]+\./i.test(trimmedLine)
+        ) {
           if (currentMainItem) {
             const subItem = {
               id: Date.now() + index,
@@ -387,47 +398,39 @@ const NotesScreen = () => {
   // Handle key press to add automatic numbering on new lines
   const handleKeyPress = (e) => {
     if (e.nativeEvent.key === "Enter") {
-      const lines = body.split("\n");
+      const lines = bodyWithNumbers.split("\n");
       const currentLineIndex = lines.length - 1;
       const nextLineNumber = currentLineIndex + 1;
+      const newText = bodyWithNumbers + `\n${nextLineNumber}. `;
+      setBodyWithNumbers(newText);
 
-      // Add the new line with automatic numbering
-      const newText = body + `\n${nextLineNumber}. `;
-      setBody(newText);
-
-      // Trigger the change handler to update structure
       handleBodyChange(newText);
+      const lineCount = lines.length + 1;
+
+      if (lineCount >= 8) {
+        const linesToHide = lineCount - 7;
+        const scrollOffset = linesToHide * 28;
+        setTimeout(() => {
+          if (scrollViewRef.current) {
+            scrollViewRef.current.scrollTo({
+              y: scrollOffset,
+              animated: true,
+            });
+          }
+        }, 50);
+      }
     }
   };
 
-  // Add sub-item inline while typing
-  const addSubItemInline = (lineIndex) => {
-    const lines = bodyWithNumbers.split("\n");
-    const currentLine = lines[lineIndex];
-
-    if (currentLine && /^\d+\./.test(currentLine.trim())) {
-      // Insert a new line with double space for sub-item after the current line
-      const newLines = [...lines];
-      newLines.splice(lineIndex + 1, 0, "  ");
-      const newText = newLines.join("\n");
-
-      setBody(newText);
-      handleBodyChange(newText);
-    }
-  };
-
-  // Handle backspace to remove numbers when user deletes them
   const handleKeyDown = (e) => {
-    console.log("handleKeyDown called", e.nativeEvent.key);
     if (e.nativeEvent.key === "Backspace") {
-      const lines = body.split("\n");
+      const lines = bodyWithNumbers.split("\n");
       const currentLine = lines[lines.length - 1];
 
-      // If user is deleting a number at the start of a line, remove the entire line
       if (currentLine && /^\d+\.\s*$/.test(currentLine)) {
         const newLines = lines.slice(0, -1);
         const newText = newLines.join("\n");
-        setBody(newText);
+        setBodyWithNumbers(newText);
         handleBodyChange(newText);
       }
     }
@@ -439,6 +442,18 @@ const NotesScreen = () => {
     } catch (error) {
       return "Invalid Date";
     }
+  };
+
+  const toggleNoteExpansion = (noteId) => {
+    setExpandedNotes((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
   };
 
   const renderNote = (note) => {
@@ -491,93 +506,84 @@ const NotesScreen = () => {
   };
 
   const renderHierarchicalNote = (note) => {
-    const mainItems = noteStructure.filter((item) => item.level === 0);
-    const subItems = noteStructure.filter((item) => item.level === 1);
+    const isExpanded = expandedNotes.has(note.id);
+    const noteLines = note.body.split("\n").filter((line) => line.trim());
+    const hasMoreContent = noteLines.length > 1;
 
     return (
       <Card key={note.id} style={styles.noteCard}>
         <Card.Content>
-          <View style={styles.noteHeader}>
-            <View style={styles.noteTitleContainer}>
-              <Title style={[styles.noteTitle, { color: theme.colors.text }]}>
-                {note.title}
-              </Title>
-              <Text
-                style={[styles.noteDate, { color: theme.colors.textSecondary }]}
-              >
-                {formatDate(note.created_at)}
-              </Text>
+          <TouchableOpacity
+            onPress={() => toggleNoteExpansion(note.id)}
+            activeOpacity={0.7}
+            style={styles.noteHeaderTouchable}
+          >
+            <View style={styles.noteHeader}>
+              <View style={styles.noteTitleContainer}>
+                <Title style={[styles.noteTitle, { color: theme.colors.text }]}>
+                  {note.title}
+                </Title>
+                <Text
+                  style={[
+                    styles.noteDate,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  {formatDate(note.created_at)}
+                </Text>
+              </View>
+              <View style={styles.noteActions}>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    openEditModal(note);
+                  }}
+                  style={styles.actionButton}
+                >
+                  <MaterialIcons
+                    name="edit"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDeleteNote(note.id);
+                  }}
+                  style={styles.actionButton}
+                >
+                  <MaterialIcons
+                    name="delete"
+                    size={20}
+                    color={theme.colors.error}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.noteActions}>
-              <TouchableOpacity
-                onPress={() => openEditModal(note)}
-                style={styles.actionButton}
-              >
+
+            {/* Expand/Collapse indicator */}
+            <View style={styles.notePreviewContainer}>
+              <View style={styles.expandIndicator}>
                 <MaterialIcons
-                  name="edit"
-                  size={20}
+                  name={isExpanded ? "expand-less" : "expand-more"}
+                  size={24}
                   color={theme.colors.primary}
                 />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleDeleteNote(note.id)}
-                style={styles.actionButton}
-              >
-                <MaterialIcons
-                  name="delete"
-                  size={20}
-                  color={theme.colors.error}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.noteBodyContainer}>
-            {mainItems.map((mainItem) => (
-              <View key={mainItem.id} style={styles.mainItemContainer}>
-                <View style={styles.mainItemRow}>
-                  <Text
-                    style={[styles.mainItemText, { color: theme.colors.text }]}
-                  >
-                    {mainItem.text}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => addSubItem(mainItem.id)}
-                    style={styles.addSubItemButton}
-                  >
-                    <MaterialIcons
-                      name="add"
-                      size={16}
-                      color={theme.colors.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Render sub-items */}
-                {subItems
-                  .filter((subItem) => subItem.parentId === mainItem.id)
-                  .sort((a, b) => a.order - b.order)
-                  .map((subItem) => (
-                    <TouchableOpacity
-                      key={subItem.id}
-                      style={styles.subItemContainer}
-                      onPress={() => handleDoubleTap(subItem.id, subItem.level)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        style={[
-                          styles.subItemText,
-                          { color: theme.colors.textSecondary },
-                        ]}
-                      >
-                        {toRomanNumeral(subItem.order)}.{" "}
-                        {subItem.text.replace(/^[ivxlcdm]+\.\s*/i, "")}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
               </View>
-            ))}
-          </View>
+            </View>
+          </TouchableOpacity>
+
+          {/* Expanded content */}
+          {isExpanded && (
+            <View style={styles.expandedContent}>
+              <View style={styles.noteBodyContainer}>
+                <Text style={[styles.noteBody, { color: theme.colors.text }]}>
+                  {formatBodyWithNumbers(note.body)}
+                </Text>
+              </View>
+            </View>
+          )}
         </Card.Content>
       </Card>
     );
@@ -640,104 +646,95 @@ const NotesScreen = () => {
         <Modal
           visible={addModalVisible}
           onDismiss={() => setAddModalVisible(false)}
-          contentContainerStyle={[
-            styles.modal,
-            { backgroundColor: theme.colors.surface },
-          ]}
+          dismissable={false}
+          contentContainerStyle={styles.addNoteModal}
         >
-          <ScrollView
-            style={styles.modalScrollView}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <TextInput
-              label="Title"
+          <View style={styles.addNoteContainer}>
+            {/* Sticky Header */}
+            <View style={styles.addNoteHeader}>
+              <TouchableOpacity
+                style={styles.addNoteHeaderButton}
+                onPress={() => {
+                  setAddModalVisible(false);
+                  resetForm();
+                }}
+              >
+                <MaterialIcons name="close" size={24} color="#4B5563" />
+                <Text style={styles.addNoteButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <View style={styles.addNoteHeaderIcons}>
+                <TouchableOpacity style={styles.addNoteIconButton}>
+                  <MaterialIcons
+                    name="content-copy"
+                    size={22}
+                    color="#4B5563"
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.addNoteIconButton}>
+                  <MaterialIcons name="edit" size={22} color="#4B5563" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.addNoteSaveButton}
+                  onPress={handleAddNote}
+                >
+                  <Text style={styles.addNoteSaveButtonText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Note Title Input */}
+            <RNTextInput
+              style={[styles.addNoteModalInput, styles.addNoteTitleInput]}
+              placeholder="Title"
+              placeholderTextColor="#9CA3AF"
               value={title}
               onChangeText={setTitle}
-              mode="outlined"
-              style={[
-                styles.modalInput,
-                styles.titleInput,
-                { backgroundColor: theme.colors.surface },
-              ]}
-              textColor={theme.colors.text}
-              labelStyle={{
-                color: theme.colors.textSecondary,
-                fontWeight: "bold",
-              }}
-              outlineColor={theme.colors.border}
-              activeOutlineColor={theme.colors.primary}
             />
 
-            <View style={styles.noteBodyInputContainer}>
-              <TextInput
-                label="Note Body"
+            {/* Note Body Input - Takes full screen */}
+
+            <ScrollView
+              style={styles.addNoteBodyInputContainer}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              ref={scrollViewRef}
+              scrollEventThrottle={16}
+              nestedScrollEnabled={true}
+              onScroll={() => {}}
+            >
+              <RNTextInput
+                style={[styles.addNoteModalInput, styles.addNoteBodyInput]}
+                placeholder="Start typing your note here..."
+                placeholderTextColor="#9CA3AF"
                 value={bodyWithNumbers}
                 onChangeText={handleBodyChange}
                 onFocus={handleBodyFocus}
                 onKeyPress={handleKeyPress}
                 onKeyDown={handleKeyDown}
-                mode="outlined"
-                multiline
-                numberOfLines={12}
-                style={[
-                  styles.modalInput,
-                  styles.noteBodyInput,
-                  { backgroundColor: theme.colors.surface },
-                ]}
-                textColor={theme.colors.text}
-                labelStyle={{ color: theme.colors.textSecondary }}
-                outlineColor={theme.colors.border}
-                activeOutlineColor={theme.colors.primary}
-                placeholder="Type your main points (1., 2., 3.) and use double space for sub-points (i., ii., iii.)"
+                multiline={true}
+                textAlignVertical="top"
+                scrollEnabled={false}
+                textAlign="left"
+                autoCapitalize="sentences"
+                autoCorrect={false}
+                spellCheck={false}
+                textBreakStrategy="simple"
+                dataDetectorTypes="none"
               />
-              {/* Inline + buttons for each main line */}
-              {bodyWithNumbers.split("\n").map((line, index) => {
-                const trimmedLine = line.trim();
-                if (trimmedLine && /^\d+\./.test(trimmedLine)) {
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      style={[styles.inlineAddButton, { top: 10 + index * 24 }]}
-                      onPress={() => addSubItemInline(index)}
-                    >
-                      <MaterialIcons
-                        name="add"
-                        size={16}
-                        color={theme.colors.primary}
-                      />
-                    </TouchableOpacity>
-                  );
-                }
-                return null;
-              })}
-            </View>
-          </ScrollView>
-          <View style={styles.modalActions}>
-            <Button
-              mode="outlined"
-              onPress={() => setAddModalVisible(false)}
-              style={styles.modalButton}
-              textColor={theme.colors.textSecondary}
-            >
-              Cancel
-            </Button>
-            <Button
-              mode="contained"
-              onPress={handleAddNote}
-              style={styles.modalButton}
-              buttonColor={theme.colors.primary}
-            >
-              Save
-            </Button>
+            </ScrollView>
           </View>
         </Modal>
       </Portal>
+
       {/* Edit Note Modal */}
       <Portal>
         <Modal
           visible={editModalVisible}
           onDismiss={() => setEditModalVisible(false)}
+          dismissable={false}
           contentContainerStyle={[
             styles.modal,
             { backgroundColor: theme.colors.surface },
@@ -787,28 +784,7 @@ const NotesScreen = () => {
                 labelStyle={{ color: theme.colors.textSecondary }}
                 outlineColor={theme.colors.border}
                 activeOutlineColor={theme.colors.primary}
-                placeholder="Type your main points (1., 2., 3.) and use double space for sub-points (i., ii., iii.)"
               />
-              {/* Inline + buttons for each main line */}
-              {bodyWithNumbers.split("\n").map((line, index) => {
-                const trimmedLine = line.trim();
-                if (trimmedLine && /^\d+\./.test(trimmedLine)) {
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      style={[styles.inlineAddButton, { top: 10 + index * 24 }]}
-                      onPress={() => addSubItemInline(index)}
-                    >
-                      <MaterialIcons
-                        name="add"
-                        size={16}
-                        color={theme.colors.primary}
-                      />
-                    </TouchableOpacity>
-                  );
-                }
-                return null;
-              })}
             </View>
           </ScrollView>
 
@@ -817,7 +793,7 @@ const NotesScreen = () => {
               mode="outlined"
               onPress={() => setEditModalVisible(false)}
               style={styles.modalButton}
-              textColor={theme.colors.textSecondary}
+              textColor={theme.colors.primary}
             >
               Cancel
             </Button>
@@ -829,6 +805,64 @@ const NotesScreen = () => {
             >
               Update
             </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* Delete Confirmation Modal */}
+      <Portal>
+        <Modal
+          visible={deleteModalVisible}
+          onDismiss={() => setDeleteModalVisible(false)}
+          dismissable={true}
+          contentContainerStyle={[
+            styles.deleteModal,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
+          <View style={styles.deleteModalContent}>
+            <MaterialIcons
+              name="delete-outline"
+              size={48}
+              color={theme.colors.error}
+              style={styles.deleteModalIcon}
+            />
+            <Title
+              style={[styles.deleteModalTitle, { color: theme.colors.text }]}
+            >
+              Delete Note
+            </Title>
+            <Text
+              style={[
+                styles.deleteModalText,
+                { color: theme.colors.textSecondary },
+              ]}
+            >
+              Are you sure you want to delete this note? This action cannot be
+              undone.
+            </Text>
+
+            <View style={styles.deleteModalActions}>
+              <Button
+                mode="outlined"
+                onPress={() => setDeleteModalVisible(false)}
+                style={styles.deleteModalButton}
+                textColor={theme.colors.primary}
+              >
+                Cancel
+              </Button>
+              <Button
+                mode="contained"
+                onPress={() => {
+                  setDeleteModalVisible(false);
+                  deleteNoteConfirmed(noteToDelete);
+                }}
+                style={[styles.deleteModalButton, styles.deleteConfirmButton]}
+                buttonColor={theme.colors.error}
+              >
+                Delete
+              </Button>
+            </View>
           </View>
         </Modal>
       </Portal>
@@ -956,7 +990,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.05)",
   },
   noteBodyContainer: {
-    marginTop: 8,
+    marginTop: 5,
   },
   noteBody: {
     fontSize: 14,
@@ -1002,20 +1036,22 @@ const styles = StyleSheet.create({
     padding: 20,
     margin: 20,
     borderRadius: 16,
-    maxHeight: "100%",
+    maxHeight: "90%",
+    position: "relative",
+    bottom: "8",
   },
   modalScrollView: {
-    maxHeight: "77%",
+    maxHeight: 200,
   },
   modalInput: {
-    marginBottom: 16,
+    marginBottom: 15,
     borderRadius: 12,
   },
   titleInput: {
     fontWeight: "bold",
   },
   noteBodyInput: {
-    minHeight: 120,
+    minHeight: 300,
     textAlignVertical: "top",
     lineHeight: 20,
   },
@@ -1038,6 +1074,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     gap: 12,
     marginTop: 15,
+    position: "absolute",
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: "white",
+    paddingVertical: 10,
+    borderRadius: 8,
+    elevation: 2,
   },
   modalButton: {
     flex: 1,
@@ -1049,6 +1093,212 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: 28,
+  },
+
+  // Add Note Modal Styles
+  addNoteModal: {
+    backgroundColor: "white",
+    margin: 0,
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+  addNoteContainer: {
+    flex: 1,
+    backgroundColor: "#F9FAFB",
+    width: "100%",
+    height: "100%",
+  },
+  addNoteHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    // Enhanced shadow for iOS
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    // Enhanced elevation for Android
+    elevation: 8,
+    zIndex: 10,
+  },
+  addNoteHeaderButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#F3F4F6",
+  },
+  addNoteButtonText: {
+    marginLeft: 6,
+    color: "#374151",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  addNoteHeaderIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  addNoteIconButton: {
+    padding: 10,
+    marginHorizontal: 2,
+    borderRadius: 8,
+    backgroundColor: "#F3F4F6",
+  },
+  addNoteSaveButton: {
+    backgroundColor: "#3B82F6",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginLeft: 12,
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  addNoteSaveButtonText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  addNoteModalInput: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D1D5DB",
+    borderWidth: 1.5,
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  addNoteTitleInput: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#111827",
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 8,
+    borderColor: "#E5E7EB",
+    borderBottomWidth: 2,
+    borderRadius: 0,
+    paddingBottom: 12,
+  },
+  addNoteBodyInputContainer: {
+    flex: 1,
+    minHeight: Dimensions.get("window").height - 60,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    marginTop: 8,
+  },
+  addNoteBodyInput: {
+    fontSize: 18,
+    color: "#374151",
+    flex: 1,
+    textAlignVertical: "top",
+    minHeight: Dimensions.get("window").height - 100,
+    lineHeight: 26,
+    paddingTop: 16,
+    paddingBottom: 20,
+    textAlign: "left",
+    flexWrap: "wrap",
+    wordWrap: "break-word",
+    paddingLeft: 32,
+    textIndent: 16,
+  },
+  addNoteInlineAddButton: {
+    position: "absolute",
+    right: 26,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Expandable note styles
+  noteHeaderTouchable: {
+    width: "100%",
+  },
+  notePreviewContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+  expandIndicator: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  expandedContent: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+
+  // Delete confirmation modal styles
+  deleteModal: {
+    backgroundColor: "white",
+    padding: 24,
+    margin: 40,
+    borderRadius: 16,
+    maxWidth: "90%",
+    alignSelf: "center",
+  },
+  deleteModalContent: {
+    alignItems: "center",
+  },
+  deleteModalIcon: {
+    marginBottom: 16,
+  },
+  deleteModalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  deleteModalText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  deleteModalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    width: "100%",
+  },
+  deleteModalButton: {
+    flex: 1,
+    borderRadius: 12,
+  },
+  deleteConfirmButton: {
+    borderWidth: 0,
+  },
+
+  numberDivider: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    opacity: 0.6,
   },
 });
 
