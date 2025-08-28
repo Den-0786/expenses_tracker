@@ -232,3 +232,4 @@ If you encounter issues:
 3. Check backend and frontend console logs
 4. Ensure database is properly configured
 5. Test endpoints individually with Postman
+

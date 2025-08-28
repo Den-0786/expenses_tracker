@@ -688,8 +688,8 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 0,
+    paddingBottom: 0,
   },
   setupCard: {
     flex: 1,
