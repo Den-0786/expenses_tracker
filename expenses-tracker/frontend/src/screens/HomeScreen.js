@@ -29,12 +29,10 @@ import { PieChart, BarChart } from "react-native-chart-kit";
 import { useDatabase } from "../context/DatabaseContext";
 import { useNotifications } from "../context/NotificationContext";
 import { useTheme } from "../context/ThemeContext";
-import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
 const HomeScreen = () => {
-  const navigation = useNavigation();
   const {
     getUserSettings,
     getExpensesByDate,
@@ -448,44 +446,6 @@ const HomeScreen = () => {
           }
           showsVerticalScrollIndicator={false}
         >
-          <Card
-            style={[
-              styles.setupCard,
-              { backgroundColor: theme.colors.surface },
-            ]}
-          >
-            <Card.Content>
-              <View style={styles.setupHeader}>
-                <View style={styles.setupInfo}>
-                  <Title
-                    style={[styles.setupTitle, { color: theme.colors.text }]}
-                  >
-                    ⚙️ Account Setup
-                  </Title>
-                  <Text
-                    style={[
-                      styles.setupSubtitle,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
-                    Configure your payment frequency, amount, and tithing
-                    preferences
-                  </Text>
-                </View>
-                <Button
-                  mode="contained"
-                  onPress={() => navigation.navigate("Onboarding")}
-                  icon="account-cog"
-                  buttonColor={theme.colors.secondary}
-                  textColor="#FFFFFF"
-                  compact
-                >
-                  Setup
-                </Button>
-              </View>
-            </Card.Content>
-          </Card>
-
           <View
             style={[
               styles.tabContainer,
@@ -1328,31 +1288,7 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 4,
   },
-  setupCard: {
-    marginTop: 5,
-    marginHorizontal: 20,
-    marginBottom: 15,
-    elevation: 4,
-    borderRadius: 12,
-  },
-  setupHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  setupInfo: {
-    flex: 1,
-    marginRight: 15,
-  },
-  setupTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  setupSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
+
   analyticsCard: {
     marginHorizontal: 20,
     marginBottom: 10,

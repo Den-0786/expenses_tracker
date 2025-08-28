@@ -85,7 +85,7 @@ const SplashScreen = () => {
       if (isAuthenticated && hasCompletedOnboarding) {
         navigation.replace("MainTabs");
       } else if (isAuthenticated && !hasCompletedOnboarding) {
-        navigation.replace("Onboarding");
+        navigation.replace("MainTabs");
       } else {
         navigation.navigate("SignUp");
       }

@@ -69,12 +69,6 @@ export const NotificationProvider = ({ children }) => {
         }
 
         if (finalStatus !== "granted") {
-          console.log(
-            "Push notification permission denied - this is normal for development"
-          );
-          console.log(
-            "Users can enable notifications later in the app settings"
-          );
           return;
         }
 
@@ -245,7 +239,6 @@ export const NotificationProvider = ({ children }) => {
       // For now, we'll use the local state since getScheduledNotificationAsync
       // is not available in this version of expo-notifications
       // TODO: Implement proper notification status checking when upgrading expo-notifications
-      console.log("Loading notification settings from local state");
 
       // Set default values - these will be updated when user toggles them
       setNotificationSettings({

@@ -45,7 +45,7 @@ const SignUpScreen = ({ navigation }) => {
     try {
       const result = await signUp(username.trim(), "email", email.trim());
       if (result.success) {
-        navigation.replace("Onboarding");
+        navigation.replace("MainTabs");
       } else {
         setError(result.error || "Sign up failed. Please try again.");
       }

@@ -424,38 +424,6 @@ const SettingsScreen = () => {
         >
           <Card style={styles.card}>
             <Card.Content>
-              <View style={styles.setupHeader}>
-                <View style={styles.setupInfo}>
-                  <Title
-                    style={[styles.setupTitle, { color: theme.colors.text }]}
-                  >
-                    Account Setup
-                  </Title>
-                  <Text
-                    style={[
-                      styles.setupSubtitle,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
-                    Configure your payment frequency, amount, and tithing
-                    preferences
-                  </Text>
-                </View>
-                <Button
-                  mode="contained"
-                  onPress={() => navigation.replace("Onboarding")}
-                  icon="account-cog"
-                  buttonColor={theme.colors.primary}
-                  textColor="#FFFFFF"
-                >
-                  Setup
-                </Button>
-              </View>
-            </Card.Content>
-          </Card>
-
-          <Card style={styles.card}>
-            <Card.Content>
               <View style={styles.cardHeader}>
                 <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
                   Payment Settings
@@ -1483,26 +1451,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#f8f9fa",
   },
-  setupHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  setupInfo: {
-    flex: 1,
-    marginRight: 15,
-  },
-  setupTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 5,
-    color: "#333",
-  },
-  setupSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    lineHeight: 20,
-  },
+
   modalContainer: {
     flex: 1,
     justifyContent: "center",

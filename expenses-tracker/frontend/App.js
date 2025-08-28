@@ -14,8 +14,6 @@ import { SecurityProvider } from "./src/context/SecurityContext";
 import { SecurityNoticeProvider } from "./src/context/SecurityNoticeContext";
 
 export default function App() {
-  console.log("App.js: Starting Expenses Tracker App");
-
   return (
     <SafeAreaProvider>
       <AuthProvider>

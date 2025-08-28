@@ -19,7 +19,7 @@ import {
   Snackbar,
 } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
-import { useNavigation } from "@react-navigation/native";
+
 import { useDatabase } from "../context/DatabaseContext";
 import { useNotifications } from "../context/NotificationContext";
 import { useTheme } from "../context/ThemeContext";
@@ -30,7 +30,6 @@ import { useAuth } from "../context/AuthContext";
 const { width, height } = Dimensions.get("window");
 
 const OnboardingScreen = () => {
-  const navigation = useNavigation();
   const { saveUserSettings, getUserSettings, isReady } = useDatabase();
   const {
     scheduleDailyReminder,
@@ -42,12 +41,6 @@ const OnboardingScreen = () => {
   const { showSecurityNotice, updateSecurityNoticeSetting } =
     useSecurityNotice();
   const { completeOnboarding, isAuthenticated } = useAuth();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigation.replace("SignIn");
-    }
-  }, [isAuthenticated, navigation]);
 
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -74,9 +67,6 @@ const OnboardingScreen = () => {
     try {
       const settings = await getUserSettings();
       setUserSettings(settings);
-      if (settings && !navigation.isFocused() && !navigation.canGoBack()) {
-        navigation.replace("MainTabs");
-      }
     } catch (error) {}
   };
 
@@ -154,9 +144,7 @@ const OnboardingScreen = () => {
           "Income setup complete! Redirecting to main app...",
           "success"
         );
-        setTimeout(() => {
-          navigation.replace("MainTabs");
-        }, 1500);
+        // Setup completed successfully
       } catch (error) {
         showSnackbar("An error occurred. Please try again.", "error");
       }
@@ -177,9 +165,7 @@ const OnboardingScreen = () => {
         "Income setup complete! Redirecting to main app...",
         "success"
       );
-      setTimeout(() => {
-        navigation.replace("MainTabs");
-      }, 1500);
+      // Setup completed successfully
     } catch (error) {
       showSnackbar("An error occurred. Please try again.", "error");
     }
@@ -251,13 +237,30 @@ const OnboardingScreen = () => {
                       style={styles.pinCloseButton}
                       onPress={handleClosePinSetup}
                     >
-                      <Text style={styles.pinCloseButtonText}>✕</Text>
+                      <Text
+                        style={[
+                          styles.pinCloseButtonText,
+                          { color: theme.colors.text },
+                        ]}
+                      >
+                        ✕
+                      </Text>
                     </TouchableOpacity>
 
-                    <Title style={styles.pinSetupTitle}>
+                    <Title
+                      style={[
+                        styles.pinSetupTitle,
+                        { color: theme.colors.text },
+                      ]}
+                    >
                       {pinStep === "pin" ? "Set Your PIN" : "Confirm Your PIN"}
                     </Title>
-                    <Text style={styles.pinSetupSubtitle}>
+                    <Text
+                      style={[
+                        styles.pinSetupSubtitle,
+                        { color: theme.colors.textSecondary },
+                      ]}
+                    >
                       {pinStep === "pin"
                         ? "Choose a 4-6 digit PIN to secure your app"
                         : "Re-enter your PIN to confirm"}
@@ -325,15 +328,29 @@ const OnboardingScreen = () => {
                     onPress={() => updateSecurityNoticeSetting(false)}
                     style={styles.closeButton}
                   >
-                    <Text style={styles.closeButtonText}>✕</Text>
+                    <Text
+                      style={[
+                        styles.closeButtonText,
+                        { color: theme.colors.text },
+                      ]}
+                    >
+                      ✕
+                    </Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.securityText}>
+                <Text
+                  style={[styles.securityText, { color: theme.colors.text }]}
+                >
                   Welcome to ExpenseTracker! Your financial data is currently
                   unprotected. To secure your app, go to Settings → Security and
                   enable PIN or biometric authentication.
                 </Text>
-                <Text style={styles.securityNote}>
+                <Text
+                  style={[
+                    styles.securityNote,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
                   💡 You can disable this message from Settings → Security
                 </Text>
               </Card.Content>
@@ -430,18 +447,6 @@ const OnboardingScreen = () => {
                     },
                   ]}
                 >
-                  <Button
-                    mode="contained"
-                    onPress={() => navigation.replace("MainTabs")}
-                    style={styles.addExpensesButton}
-                    buttonColor={theme.colors.secondary}
-                    textColor={theme.colors.onPrimary}
-                    // icon="arrow-forward"
-                    Ionicons
-                    name="arrow-forward"
-                  >
-                    To Dashboard
-                  </Button>
                   <Text
                     style={[
                       styles.addExpensesText,
@@ -694,7 +699,10 @@ const styles = StyleSheet.create({
   setupCard: {
     flex: 1,
     elevation: 8,
-    borderRadius: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   cardContent: {
     flex: 1,
@@ -752,17 +760,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-  },
-  addExpensesButton: {
-    paddingHorizontal: 30,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 10,
-  },
-  addExpensesText: {
-    fontSize: 12,
-    textAlign: "center",
-    fontStyle: "italic",
   },
 
   input: {
@@ -908,7 +905,6 @@ const styles = StyleSheet.create({
   pinCloseButtonText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#666",
   },
   pinSetupTitle: {
     fontSize: 20,

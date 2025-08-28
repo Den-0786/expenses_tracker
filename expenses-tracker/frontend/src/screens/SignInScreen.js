@@ -61,7 +61,7 @@ const SignInScreen = ({ navigation }) => {
       const result = await signIn(pin.trim());
       if (result.success) {
         setError("");
-        navigation.replace("Onboarding");
+        navigation.replace("MainTabs");
       } else {
         setError(result.error || "Invalid PIN");
         setPin("");

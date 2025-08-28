@@ -43,7 +43,7 @@ export const DatabaseProvider = ({ children }) => {
     try {
       // For now, using mock database until Neon integration is complete
       // TODO: Replace with Neon Postgres connection
-      console.log("Initializing database - Neon integration pending");
+
       setDb({
         mock: true,
         mockData: {
@@ -293,12 +293,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Saving user settings", {
-          paymentFrequency,
-          paymentAmount,
-          tithingPercentage,
-          tithingEnabled,
-        });
         db.mockData.userSettings = {
           id: 1,
           payment_frequency: paymentFrequency,
@@ -338,7 +332,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Getting user settings");
         resolve(db.mockData.userSettings);
         return;
       }
@@ -368,13 +361,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Adding expense", {
-          amount,
-          description,
-          category,
-          date,
-          paymentMethod,
-        });
         const newExpense = {
           id: Date.now(),
           amount,
@@ -410,13 +396,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Adding income", {
-          amount,
-          description,
-          category,
-          source,
-          date,
-        });
         const newIncome = {
           id: Date.now(),
           amount,
@@ -453,7 +432,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Getting income for date", date);
         const incomeForDate = db.mockData.income.filter(
           (income) => income.date === date
         );
@@ -481,10 +459,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Getting income for date range", {
-          startDate,
-          endDate,
-        });
         const incomeInRange = db.mockData.income.filter(
           (income) => income.date >= startDate && income.date <= endDate
         );
@@ -512,7 +486,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Getting all income");
         resolve(db.mockData.income || []);
         return;
       }
@@ -537,13 +510,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Updating income", {
-          id,
-          amount,
-          description,
-          category,
-          source,
-        });
         const incomeIndex = db.mockData.income.findIndex(
           (inc) => inc.id === id
         );
@@ -583,7 +549,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Deleting income", { id });
         const incomeIndex = db.mockData.income.findIndex(
           (inc) => inc.id === id
         );
@@ -613,7 +578,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Getting expenses for date", date);
         const expensesForDate = db.mockData.expenses.filter(
           (expense) => expense.date === date
         );
@@ -640,10 +604,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Getting expenses for date range", {
-          startDate,
-          endDate,
-        });
         const expensesInRange = db.mockData.expenses.filter(
           (expense) => expense.date >= startDate && expense.date <= endDate
         );
@@ -670,12 +630,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Updating expense", {
-          id,
-          amount,
-          description,
-          category,
-        });
         resolve({ rowsAffected: 1 });
         return;
       }
@@ -701,14 +655,13 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Deleting expense", { id });
         // Remove the expense from mock data
         const initialLength = db.mockData.expenses.length;
         db.mockData.expenses = db.mockData.expenses.filter(
           (expense) => expense.id !== id
         );
         const finalLength = db.mockData.expenses.length;
-        console.log(`Mock: Removed ${initialLength - finalLength} expense(s)`);
+
         resolve({ rowsAffected: initialLength - finalLength });
         return;
       }
@@ -737,12 +690,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Saving daily summary", {
-          date,
-          totalExpenses,
-          totalTithing,
-          remainingBalance,
-        });
         resolve({ insertId: 1 });
         return;
       }
@@ -774,13 +721,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Saving weekly summary", {
-          weekStart,
-          weekEnd,
-          totalExpenses,
-          totalTithing,
-          remainingBalance,
-        });
         resolve({ insertId: 1 });
         return;
       }
@@ -812,13 +752,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Saving monthly summary", {
-          month,
-          year,
-          totalExpenses,
-          totalTithing,
-          remainingBalance,
-        });
         resolve({ insertId: 1 });
         return;
       }
@@ -844,7 +777,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Clearing old data", { daysToKeep });
         resolve({ rowsAffected: 0 });
         return;
       }
@@ -872,7 +804,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Saving budget", { period, amount });
         resolve({ insertId: 1 });
         return;
       }
@@ -897,7 +828,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Getting budget for period", period);
         resolve(0);
         return;
       }
@@ -921,7 +851,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Getting all budgets");
         resolve({ daily: 0, weekly: 0, monthly: 0, yearly: 0 });
         return;
       }
@@ -951,7 +880,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Exporting data");
         resolve({
           expenses: [],
           income: [],
@@ -1017,7 +945,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Getting data usage");
         resolve({
           totalExpenses: 0,
           totalIncome: 0,
@@ -1065,7 +992,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Getting notes");
         resolve(db.mockData.notes || []);
         return;
       }
@@ -1091,7 +1017,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Saving note", note);
         const newNote = {
           id: Date.now(),
           ...note,
@@ -1124,7 +1049,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Updating note", note);
         const noteIndex = db.mockData.notes.findIndex((n) => n.id === note.id);
         if (noteIndex !== -1) {
           db.mockData.notes[noteIndex] = {
@@ -1158,7 +1082,6 @@ export const DatabaseProvider = ({ children }) => {
       }
 
       if (db.mock) {
-        console.log("Mock: Deleting note", noteId);
         const noteIndex = db.mockData.notes.findIndex((n) => n.id === noteId);
         if (noteIndex !== -1) {
           db.mockData.notes.splice(noteIndex, 1);
