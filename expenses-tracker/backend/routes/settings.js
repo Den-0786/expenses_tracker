@@ -1,15 +1,14 @@
 const express = require("express");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
+const { authenticateToken } = require("../middleware/auth");
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get user settings
-router.get("/", async (req, res) => {
+router.get("/", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -45,7 +44,6 @@ router.get("/", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get user settings error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to get user settings",
@@ -53,14 +51,11 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Update user profile
-router.put("/profile", async (req, res) => {
+router.put("/profile", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { username, email } = req.body;
 
-    // Check if username or email already exists
     if (username || email) {
       const existingUser = await prisma.user.findFirst({
         where: {
@@ -100,7 +95,6 @@ router.put("/profile", async (req, res) => {
       user: updatedUser,
     });
   } catch (error) {
-    console.error("Update profile error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to update profile",
@@ -108,11 +102,9 @@ router.put("/profile", async (req, res) => {
   }
 });
 
-// Change PIN
-router.put("/change-pin", async (req, res) => {
+router.put("/change-pin", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { currentPin, newPin } = req.body;
 
     if (!currentPin || !newPin) {
@@ -129,7 +121,6 @@ router.put("/change-pin", async (req, res) => {
       });
     }
 
-    // Get current user to verify current PIN
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -141,7 +132,6 @@ router.put("/change-pin", async (req, res) => {
       });
     }
 
-    // Verify current PIN
     const isValidPin = await bcrypt.compare(currentPin, user.pin);
     if (!isValidPin) {
       return res.status(401).json({
@@ -150,10 +140,8 @@ router.put("/change-pin", async (req, res) => {
       });
     }
 
-    // Hash new PIN
     const hashedNewPin = await bcrypt.hash(newPin, 10);
 
-    // Update PIN
     await prisma.user.update({
       where: { id: userId },
       data: { pin: hashedNewPin },
@@ -164,7 +152,6 @@ router.put("/change-pin", async (req, res) => {
       message: "PIN changed successfully",
     });
   } catch (error) {
-    console.error("Change PIN error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to change PIN",
@@ -172,13 +159,10 @@ router.put("/change-pin", async (req, res) => {
   }
 });
 
-// Get app statistics
-router.get("/statistics", async (req, res) => {
+router.get("/statistics", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
 
-    // Get counts
     const totalExpenses = await prisma.expense.count({
       where: { userId },
     });
@@ -199,7 +183,6 @@ router.get("/statistics", async (req, res) => {
       where: { userId },
     });
 
-    // Get total amounts
     const expenses = await prisma.expense.findMany({
       where: { userId },
       select: { amount: true },
@@ -216,7 +199,6 @@ router.get("/statistics", async (req, res) => {
     );
     const totalIncomeAmount = income.reduce((sum, inc) => sum + inc.amount, 0);
 
-    // Get first and last transaction dates
     const firstExpense = await prisma.expense.findFirst({
       where: { userId },
       orderBy: { date: "asc" },
@@ -251,7 +233,6 @@ router.get("/statistics", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get statistics error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to get statistics",
@@ -259,13 +240,10 @@ router.get("/statistics", async (req, res) => {
   }
 });
 
-// Export user data
-router.get("/export", async (req, res) => {
+router.get("/export", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
 
-    // Get all user data
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -303,7 +281,7 @@ router.get("/export", async (req, res) => {
       exportDate: new Date().toISOString(),
       user: {
         ...user,
-        id: undefined, // Remove sensitive ID
+        id: undefined,
       },
       data: {
         expenses,
@@ -320,7 +298,6 @@ router.get("/export", async (req, res) => {
       exportData,
     });
   } catch (error) {
-    console.error("Export data error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to export data",
@@ -328,11 +305,9 @@ router.get("/export", async (req, res) => {
   }
 });
 
-// Delete account
-router.delete("/account", async (req, res) => {
+router.delete("/account", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { confirmPassword } = req.body;
 
     if (!confirmPassword) {
@@ -342,7 +317,6 @@ router.delete("/account", async (req, res) => {
       });
     }
 
-    // Get user to verify password
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -354,7 +328,6 @@ router.delete("/account", async (req, res) => {
       });
     }
 
-    // Verify password
     const isValidPassword = await bcrypt.compare(confirmPassword, user.pin);
     if (!isValidPassword) {
       return res.status(401).json({
@@ -363,7 +336,6 @@ router.delete("/account", async (req, res) => {
       });
     }
 
-    // Delete user (this will cascade delete all related data)
     await prisma.user.delete({
       where: { id: userId },
     });
@@ -373,7 +345,6 @@ router.delete("/account", async (req, res) => {
       message: "Account deleted successfully",
     });
   } catch (error) {
-    console.error("Delete account error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to delete account",

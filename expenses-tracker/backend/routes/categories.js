@@ -1,14 +1,13 @@
 const express = require("express");
 const { PrismaClient } = require("@prisma/client");
+const { authenticateToken } = require("../middleware/auth");
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get all categories for a user
-router.get("/", async (req, res) => {
+router.get("/", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
 
     const categories = await prisma.category.findMany({
       where: { userId },
@@ -22,7 +21,6 @@ router.get("/", async (req, res) => {
       categories,
     });
   } catch (error) {
-    console.error("Get categories error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to get categories",
@@ -30,14 +28,12 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get categories by type
-router.get("/by-type/:type", async (req, res) => {
+router.get("/by-type/:type", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { type } = req.params;
 
-    if (!["expense", "income"].includes(type)) {
+    if (!type || !["expense", "income"].includes(type)) {
       return res.status(400).json({
         error: "Invalid category type",
         message: "Type must be 'expense' or 'income'",
@@ -59,7 +55,6 @@ router.get("/by-type/:type", async (req, res) => {
       categories,
     });
   } catch (error) {
-    console.error("Get categories by type error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to get categories by type",
@@ -67,11 +62,9 @@ router.get("/by-type/:type", async (req, res) => {
   }
 });
 
-// Create new category
-router.post("/", async (req, res) => {
+router.post("/", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { name, type, color, icon } = req.body;
 
     if (!name || !type) {
@@ -85,6 +78,21 @@ router.post("/", async (req, res) => {
       return res.status(400).json({
         error: "Invalid category type",
         message: "Type must be 'expense' or 'income'",
+      });
+    }
+
+    const existingCategory = await prisma.category.findFirst({
+      where: {
+        userId,
+        name,
+        type,
+      },
+    });
+
+    if (existingCategory) {
+      return res.status(400).json({
+        error: "Category already exists",
+        message: "A category with this name and type already exists",
       });
     }
 
@@ -104,7 +112,6 @@ router.post("/", async (req, res) => {
       category,
     });
   } catch (error) {
-    console.error("Create category error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to create category",
@@ -112,18 +119,23 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Update category
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { id } = req.params;
     const { name, type, color, icon } = req.body;
+
+    if (type && !["expense", "income"].includes(type)) {
+      return res.status(400).json({
+        error: "Invalid category type",
+        message: "Type must be 'expense' or 'income'",
+      });
+    }
 
     const category = await prisma.category.update({
       where: {
         id: parseInt(id),
-        userId, // Ensure user owns this category
+        userId,
       },
       data: {
         name: name || undefined,
@@ -139,7 +151,6 @@ router.put("/:id", async (req, res) => {
       category,
     });
   } catch (error) {
-    console.error("Update category error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to update category",
@@ -147,17 +158,40 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// Delete category
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { id } = req.params;
+
+    const category = await prisma.category.findUnique({
+      where: {
+        id: parseInt(id),
+        userId,
+      },
+      include: {
+        expenses: true,
+        income: true,
+      },
+    });
+
+    if (!category) {
+      return res.status(404).json({
+        error: "Category not found",
+        message: "Category does not exist",
+      });
+    }
+
+    if (category.expenses.length > 0 || category.income.length > 0) {
+      return res.status(400).json({
+        error: "Cannot delete category",
+        message: "Category is being used by expenses or income",
+      });
+    }
 
     await prisma.category.delete({
       where: {
         id: parseInt(id),
-        userId, // Ensure user owns this category
+        userId,
       },
     });
 
@@ -166,7 +200,6 @@ router.delete("/:id", async (req, res) => {
       message: "Category deleted successfully",
     });
   } catch (error) {
-    console.error("Delete category error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to delete category",

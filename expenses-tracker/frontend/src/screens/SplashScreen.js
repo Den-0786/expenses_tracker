@@ -16,7 +16,6 @@ const SplashScreen = () => {
   const [countdown, setCountdown] = useState(10);
   const [hasNavigated, setHasNavigated] = useState(false);
 
-  // Animation values for dots
   const dot1Opacity = new Animated.Value(0.3);
   const dot2Opacity = new Animated.Value(0.3);
   const dot3Opacity = new Animated.Value(0.3);
@@ -70,10 +69,8 @@ const SplashScreen = () => {
     if (currentPhase === "countdown") {
       const countdownTimer = setInterval(() => {
         setCountdown((prev) => {
-          if (prev <= 1) {
-            return 0;
-          }
-          return prev - 1;
+          const newCount = prev <= 1 ? 0 : prev - 1;
+          return newCount;
         });
       }, 1000);
 
@@ -84,29 +81,14 @@ const SplashScreen = () => {
   }, [currentPhase]);
   useEffect(() => {
     if (countdown === 0 && !isLoading && !hasNavigated) {
-      console.log("SplashScreen: Navigation decision", {
-        isAuthenticated,
-        hasCompletedOnboarding,
-        user: user?.username,
-      });
-
-      if (isLoading) {
-        return;
+      setHasNavigated(true);
+      if (isAuthenticated && hasCompletedOnboarding) {
+        navigation.replace("MainTabs");
+      } else if (isAuthenticated && !hasCompletedOnboarding) {
+        navigation.replace("Onboarding");
+      } else {
+        navigation.navigate("SignUp");
       }
-
-      setHasNavigated(true); // Prevent multiple navigations
-
-      const navigationTimer = setTimeout(() => {
-        if (isAuthenticated && hasCompletedOnboarding) {
-          navigation.replace("MainTabs");
-        } else if (isAuthenticated && !hasCompletedOnboarding) {
-          navigation.replace("Onboarding");
-        } else {
-          navigation.replace("SignUp");
-        }
-      }, 500);
-
-      return () => clearTimeout(navigationTimer);
     }
   }, [
     countdown,
@@ -137,7 +119,6 @@ const SplashScreen = () => {
         <Text style={styles.subtitle}>Smart Financial Management</Text>
 
         {currentPhase === "dots" ? (
-          // Phase 1: Animated dots
           <View style={styles.loadingContainer}>
             <Animated.View
               style={[styles.loadingDot, { opacity: dot1Opacity }]}
@@ -150,7 +131,6 @@ const SplashScreen = () => {
             />
           </View>
         ) : (
-          // Phase 2: Countdown
           <View style={styles.countdownContainer}>
             <Text style={styles.countdownText}>{countdown}</Text>
             <Text style={styles.countdownLabel}>seconds remaining</Text>

@@ -8,6 +8,7 @@ import {
   Dimensions,
   RefreshControl,
   TextInput as RNTextInput,
+  Clipboard,
 } from "react-native";
 import {
   Card,
@@ -27,7 +28,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useDatabase } from "../context/DatabaseContext";
 
 const NotesScreen = () => {
-  const { theme } = useTheme();
+  const { theme, isDarkMode, themeMode, setTheme, toggleTheme } = useTheme();
   const { getNotes, saveNote, updateNote, deleteNote } = useDatabase();
   const scrollViewRef = useRef(null);
 
@@ -48,9 +49,36 @@ const NotesScreen = () => {
   // Track expanded notes
   const [expandedNotes, setExpandedNotes] = useState(new Set());
 
-  // Delete confirmation modal state
+  // Actions and delete confirmation modal state
+  const [actionsModalVisible, setActionsModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState(null);
+  const [colorPickerVisible, setColorPickerVisible] = useState(false);
+
+  const [fontPickerVisible, setFontPickerVisible] = useState(false);
+  const [selectedFont, setSelectedFont] = useState("default");
+  const [titleTextStyle, setTitleTextStyle] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    color: "#000000",
+    backgroundColor: "transparent",
+  });
+
+  const [bodyTextStyle, setBodyTextStyle] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    color: "#000000",
+    backgroundColor: "transparent",
+  });
+
+  const [activeInput, setActiveInput] = useState("body"); // "title" or "body"
+
+  // Function to handle input focus and update active input
+  const handleInputFocus = (inputType) => {
+    setActiveInput(inputType);
+  };
 
   useEffect(() => {
     loadNotes();
@@ -85,11 +113,26 @@ const NotesScreen = () => {
       return;
     }
 
-    const filtered = notes.filter(
-      (note) =>
-        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.body.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const query = searchQuery.toLowerCase().trim();
+    const filtered = notes.filter((note) => {
+      // Search in title
+      if (note.title.toLowerCase().includes(query)) {
+        return true;
+      }
+
+      // Search in body/content
+      if (note.body.toLowerCase().includes(query)) {
+        return true;
+      }
+
+      // Search in date (formatted date)
+      const formattedDate = formatDate(note.created_at);
+      if (formattedDate.toLowerCase().includes(query)) {
+        return true;
+      }
+
+      return false;
+    });
     setFilteredNotes(filtered);
   };
 
@@ -126,6 +169,20 @@ const NotesScreen = () => {
         text2: "Failed to save note",
       });
     }
+  };
+
+  const handleCopyNote = () => {
+    const noteContent = `${title}\n\n${bodyWithNumbers}`;
+    Clipboard.setString(noteContent);
+    Toast.show({
+      type: "success",
+      text1: "Copied!",
+      text2: "Note content copied to clipboard",
+    });
+  };
+
+  const handlePenColor = () => {
+    setColorPickerVisible(true);
   };
 
   const handleEditNote = async () => {
@@ -326,7 +383,8 @@ const NotesScreen = () => {
     }
 
     // Process only actual line breaks, not word-wrapped text
-    const numberedLines = actualLines.map((line, index) => {
+    let lineCounter = 1;
+    const numberedLines = actualLines.map((line) => {
       const trimmedLine = line.trim();
       if (!trimmedLine) {
         return line;
@@ -338,10 +396,12 @@ const NotesScreen = () => {
         return line;
       }
       if (/^\d+\./.test(trimmedLine)) {
-        return line;
+        // Renumber this line sequentially
+        const content = trimmedLine.replace(/^\d+\.\s*/, "");
+        return `${lineCounter++}. ${content}`;
       }
       if (trimmedLine && !/^\d+/.test(trimmedLine)) {
-        return `${index + 1}. ${trimmedLine}`;
+        return `${lineCounter++}. ${trimmedLine}`;
       }
 
       return line;
@@ -505,89 +565,77 @@ const NotesScreen = () => {
     );
   };
 
-  const renderHierarchicalNote = (note) => {
+  const renderNoteRow = (note) => {
     const isExpanded = expandedNotes.has(note.id);
-    const noteLines = note.body.split("\n").filter((line) => line.trim());
-    const hasMoreContent = noteLines.length > 1;
+
+    if (!theme || !theme.colors) {
+      return null;
+    }
 
     return (
-      <Card key={note.id} style={styles.noteCard}>
-        <Card.Content>
-          <TouchableOpacity
-            onPress={() => toggleNoteExpansion(note.id)}
-            activeOpacity={0.7}
-            style={styles.noteHeaderTouchable}
-          >
-            <View style={styles.noteHeader}>
-              <View style={styles.noteTitleContainer}>
-                <Title style={[styles.noteTitle, { color: theme.colors.text }]}>
-                  {note.title}
-                </Title>
-                <Text
-                  style={[
-                    styles.noteDate,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  {formatDate(note.created_at)}
-                </Text>
-              </View>
-              <View style={styles.noteActions}>
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    openEditModal(note);
-                  }}
-                  style={styles.actionButton}
-                >
-                  <MaterialIcons
-                    name="edit"
-                    size={20}
-                    color={theme.colors.primary}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleDeleteNote(note.id);
-                  }}
-                  style={styles.actionButton}
-                >
-                  <MaterialIcons
-                    name="delete"
-                    size={20}
-                    color={theme.colors.error}
-                  />
-                </TouchableOpacity>
-              </View>
+      <View>
+        <TouchableOpacity
+          onPress={() => toggleNoteExpansion(note.id)}
+          activeOpacity={0.7}
+          style={styles.noteRowTouchable}
+        >
+          <View style={styles.noteRow}>
+            <View style={styles.noteTitleContainer}>
+              <Title style={[styles.noteTitle, { color: theme.colors.text }]}>
+                {note.title}
+              </Title>
+              <Text
+                style={[styles.noteDate, { color: theme.colors.textSecondary }]}
+              >
+                {formatDate(note.created_at)}
+              </Text>
             </View>
-
-            {/* Expand/Collapse indicator */}
-            <View style={styles.notePreviewContainer}>
-              <View style={styles.expandIndicator}>
+            <View style={styles.noteActions}>
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setSelectedNote(note);
+                  setNoteToDelete(note.id);
+                  setActionsModalVisible(true);
+                }}
+                style={[
+                  styles.actionButton,
+                  {
+                    backgroundColor: theme.isDarkMode
+                      ? "rgba(255, 255, 255, 0.1)"
+                      : "rgba(0, 0, 0, 0.05)",
+                    borderWidth: 1,
+                    borderColor: theme.colors.primary,
+                  },
+                ]}
+              >
                 <MaterialIcons
-                  name={isExpanded ? "expand-less" : "expand-more"}
+                  name="more-vert"
                   size={24}
                   color={theme.colors.primary}
                 />
-              </View>
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
 
-          {/* Expanded content */}
-          {isExpanded && (
-            <View style={styles.expandedContent}>
-              <View style={styles.noteBodyContainer}>
-                <Text style={[styles.noteBody, { color: theme.colors.text }]}>
-                  {formatBodyWithNumbers(note.body)}
-                </Text>
-              </View>
+        {/* Expanded content */}
+        {isExpanded && (
+          <View style={styles.expandedContent}>
+            <View style={styles.noteBodyContainer}>
+              <Text style={[styles.noteBody, { color: theme.colors.text }]}>
+                {formatBodyWithNumbers(note.body)}
+              </Text>
             </View>
-          )}
-        </Card.Content>
-      </Card>
+          </View>
+        )}
+      </View>
     );
   };
+
+  if (!theme || !theme.colors) {
+    return null;
+  }
 
   return (
     <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
@@ -600,16 +648,28 @@ const NotesScreen = () => {
       </View>
 
       {/* Main Content Container - Gray Parent Card */}
-      <View style={styles.contentContainer}>
+      <View
+        style={[
+          styles.contentContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
         {/* Search Bar */}
-        <View style={styles.searchContainer}>
+        <View
+          style={[
+            styles.searchContainer,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
           <Searchbar
             placeholder="Search notes..."
             onChangeText={setSearchQuery}
             value={searchQuery}
             style={styles.searchBar}
-            iconColor="#666"
-            inputStyle={{ color: "#333" }}
+            iconColor={theme.colors.textSecondary}
+            inputStyle={{ color: theme.colors.text }}
+            placeholderTextColor={theme.colors.textSecondary}
+            theme={theme}
           />
         </View>
 
@@ -620,6 +680,8 @@ const NotesScreen = () => {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustContentInsets={false}
+          contentContainerStyle={styles.scrollContent}
         >
           {filteredNotes.length === 0 ? (
             <View style={styles.emptyState}>
@@ -634,9 +696,23 @@ const NotesScreen = () => {
               </Text>
             </View>
           ) : (
-            <View style={styles.notesList}>
-              {filteredNotes.map(renderHierarchicalNote)}
-            </View>
+            <Card
+              style={[
+                styles.notesContainer,
+                { backgroundColor: theme.colors.surface },
+              ]}
+            >
+              <Card.Content style={styles.notesContent}>
+                {filteredNotes.map((note, index) => (
+                  <View key={note.id}>
+                    {renderNoteRow(note)}
+                    {index < filteredNotes.length - 1 && (
+                      <View style={styles.noteDivider} />
+                    )}
+                  </View>
+                ))}
+              </Card.Content>
+            </Card>
           )}
         </ScrollView>
       </View>
@@ -647,51 +723,239 @@ const NotesScreen = () => {
           visible={addModalVisible}
           onDismiss={() => setAddModalVisible(false)}
           dismissable={false}
-          contentContainerStyle={styles.addNoteModal}
+          contentContainerStyle={[
+            styles.addNoteModal,
+            { backgroundColor: theme.colors.surface },
+          ]}
         >
           <View style={styles.addNoteContainer}>
             {/* Sticky Header */}
-            <View style={styles.addNoteHeader}>
-              <TouchableOpacity
-                style={styles.addNoteHeaderButton}
-                onPress={() => {
-                  setAddModalVisible(false);
-                  resetForm();
-                }}
-              >
-                <MaterialIcons name="close" size={24} color="#4B5563" />
-                <Text style={styles.addNoteButtonText}>Cancel</Text>
-              </TouchableOpacity>
+            <View
+              style={[
+                styles.addNoteHeader,
+                {
+                  backgroundColor: theme.isDarkMode
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.02)",
+                  borderBottomColor: theme.colors.border,
+                },
+              ]}
+            >
+              {/* Single Row - All Controls */}
+              <View style={styles.addNoteHeaderTopRow}>
+                {/* Cancel Button - Left End */}
+                <TouchableOpacity
+                  style={[
+                    styles.cuteRoundButton,
+                    { backgroundColor: "#FF6B6B" },
+                  ]}
+                  onPress={() => {
+                    setAddModalVisible(false);
+                    resetForm();
+                  }}
+                >
+                  <MaterialIcons name="close" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
 
-              <View style={styles.addNoteHeaderIcons}>
-                <TouchableOpacity style={styles.addNoteIconButton}>
+                {/* Formatting Tools - Center */}
+                <TouchableOpacity
+                  style={[
+                    styles.addNoteIconButton,
+                    { backgroundColor: theme.colors.background },
+                  ]}
+                  onPress={handleCopyNote}
+                >
                   <MaterialIcons
                     name="content-copy"
                     size={22}
-                    color="#4B5563"
+                    color={theme.colors.textSecondary}
                   />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.addNoteIconButton}>
-                  <MaterialIcons name="edit" size={22} color="#4B5563" />
+                <TouchableOpacity
+                  style={[
+                    styles.addNoteIconButton,
+                    { backgroundColor: theme.colors.background },
+                  ]}
+                  onPress={handlePenColor}
+                >
+                  <MaterialIcons
+                    name="edit"
+                    size={22}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+
+                {/* Text Formatting Controls */}
+                <TouchableOpacity
+                  style={[
+                    styles.formattingIcon,
+                    { backgroundColor: theme.colors.background },
+                    (activeInput === "title"
+                      ? titleTextStyle.bold
+                      : bodyTextStyle.bold) && {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (activeInput === "title") {
+                      setTitleTextStyle((prev) => ({
+                        ...prev,
+                        bold: !prev.bold,
+                      }));
+                    } else {
+                      setBodyTextStyle((prev) => ({
+                        ...prev,
+                        bold: !prev.bold,
+                      }));
+                    }
+                  }}
+                >
+                  <MaterialIcons
+                    name="format-bold"
+                    size={18}
+                    color={
+                      (
+                        activeInput === "title"
+                          ? titleTextStyle.bold
+                          : bodyTextStyle.bold
+                      )
+                        ? "#FFFFFF"
+                        : theme.colors.textSecondary
+                    }
+                  />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.addNoteSaveButton}
+                  style={[
+                    styles.formattingIcon,
+                    { backgroundColor: theme.colors.background },
+                    (activeInput === "title"
+                      ? titleTextStyle.italic
+                      : bodyTextStyle.italic) && {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (activeInput === "title") {
+                      setTitleTextStyle((prev) => ({
+                        ...prev,
+                        italic: !prev.italic,
+                      }));
+                    } else {
+                      setBodyTextStyle((prev) => ({
+                        ...prev,
+                        italic: !prev.italic,
+                      }));
+                    }
+                  }}
+                >
+                  <MaterialIcons
+                    name="format-italic"
+                    size={18}
+                    color={
+                      (
+                        activeInput === "title"
+                          ? titleTextStyle.italic
+                          : bodyTextStyle.italic
+                      )
+                        ? "#FFFFFF"
+                        : theme.colors.textSecondary
+                    }
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.formattingIcon,
+                    { backgroundColor: theme.colors.background },
+                    (activeInput === "title"
+                      ? titleTextStyle.underline
+                      : bodyTextStyle.underline) && {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (activeInput === "title") {
+                      setTitleTextStyle((prev) => ({
+                        ...prev,
+                        underline: !prev.underline,
+                      }));
+                    } else {
+                      setBodyTextStyle((prev) => ({
+                        ...prev,
+                        underline: !prev.underline,
+                      }));
+                    }
+                  }}
+                >
+                  <MaterialIcons
+                    name="format-underline"
+                    size={18}
+                    color={
+                      (
+                        activeInput === "title"
+                          ? titleTextStyle.underline
+                          : bodyTextStyle.underline
+                      )
+                        ? "#FFFFFF"
+                        : theme.colors.textSecondary
+                    }
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.formattingIcon,
+                    { backgroundColor: theme.colors.background },
+                  ]}
+                  onPress={() => setFontPickerVisible(true)}
+                >
+                  <MaterialIcons
+                    name="text-fields"
+                    size={18}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+
+                {/* Save Button - Right End */}
+                <TouchableOpacity
+                  style={[
+                    styles.cuteRoundButton,
+                    { backgroundColor: theme.colors.primary },
+                  ]}
                   onPress={handleAddNote}
                 >
-                  <Text style={styles.addNoteSaveButtonText}>Done</Text>
+                  <MaterialIcons name="check" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Note Title Input */}
             <RNTextInput
-              style={[styles.addNoteModalInput, styles.addNoteTitleInput]}
+              style={[
+                styles.addNoteModalInput,
+                styles.addNoteTitleInput,
+                {
+                  color: titleTextStyle.color,
+                  backgroundColor:
+                    titleTextStyle.backgroundColor === "transparent"
+                      ? theme.colors.background
+                      : titleTextStyle.backgroundColor,
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                  fontWeight: titleTextStyle.bold ? "bold" : "normal",
+                  fontStyle: titleTextStyle.italic ? "italic" : "normal",
+                  textDecorationLine: titleTextStyle.underline
+                    ? "underline"
+                    : "none",
+                },
+              ]}
               placeholder="Title"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={theme.colors.textSecondary}
               value={title}
               onChangeText={setTitle}
+              onFocus={() => handleInputFocus("title")}
             />
 
             {/* Note Body Input - Takes full screen */}
@@ -706,12 +970,32 @@ const NotesScreen = () => {
               onScroll={() => {}}
             >
               <RNTextInput
-                style={[styles.addNoteModalInput, styles.addNoteBodyInput]}
+                style={[
+                  styles.addNoteModalInput,
+                  styles.addNoteBodyInput,
+                  {
+                    color: bodyTextStyle.color,
+                    backgroundColor:
+                      bodyTextStyle.backgroundColor === "transparent"
+                        ? theme.colors.background
+                        : bodyTextStyle.backgroundColor,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                    fontWeight: bodyTextStyle.bold ? "bold" : "normal",
+                    fontStyle: bodyTextStyle.italic ? "italic" : "normal",
+                    textDecorationLine: bodyTextStyle.underline
+                      ? "underline"
+                      : "none",
+                  },
+                ]}
                 placeholder="Start typing your note here..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={theme.colors.textSecondary}
                 value={bodyWithNumbers}
                 onChangeText={handleBodyChange}
-                onFocus={handleBodyFocus}
+                onFocus={() => {
+                  handleInputFocus("body");
+                  handleBodyFocus();
+                }}
                 onKeyPress={handleKeyPress}
                 onKeyDown={handleKeyDown}
                 multiline={true}
@@ -725,6 +1009,159 @@ const NotesScreen = () => {
                 dataDetectorTypes="none"
               />
             </ScrollView>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* Color Picker Modal */}
+      <Portal>
+        <Modal
+          visible={colorPickerVisible}
+          onDismiss={() => setColorPickerVisible(false)}
+          dismissable={true}
+          contentContainerStyle={[
+            styles.colorPickerModal,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
+          <View style={styles.colorPickerContent}>
+            <Title
+              style={[styles.colorPickerTitle, { color: theme.colors.text }]}
+            >
+              {activeInput === "title" ? "Title" : "Body"} Styling
+            </Title>
+
+            <View style={styles.colorSection}>
+              <Text
+                style={[styles.colorSectionTitle, { color: theme.colors.text }]}
+              >
+                Text Color
+              </Text>
+              <View style={styles.colorGrid}>
+                {[
+                  "#000000",
+                  "#FFFFFF",
+                  "#FF0000",
+                  "#00FF00",
+                  "#0000FF",
+                  "#FFA500",
+                  "#800080",
+                  "#FFC0CB",
+                  "#FFFF00",
+                ].map((color) => (
+                  <TouchableOpacity
+                    key={color}
+                    style={[
+                      styles.colorOption,
+                      { backgroundColor: color },
+                      (activeInput === "title"
+                        ? titleTextStyle.color
+                        : bodyTextStyle.color) === color && [
+                        styles.selectedColor,
+                        { borderColor: theme.colors.primary },
+                      ],
+                    ]}
+                    onPress={() => {
+                      if (activeInput === "title") {
+                        setTitleTextStyle((prev) => ({
+                          ...prev,
+                          color: prev.color === color ? "#000000" : color, // Toggle: if same color, reset to default
+                        }));
+                      } else {
+                        setBodyTextStyle((prev) => ({
+                          ...prev,
+                          color: prev.color === color ? "#000000" : color, // Toggle: if same color, reset to default
+                        }));
+                      }
+                    }}
+                  />
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.colorSection}>
+              <Text
+                style={[styles.colorSectionTitle, { color: theme.colors.text }]}
+              >
+                Background Color
+              </Text>
+              <View style={styles.colorGrid}>
+                {[
+                  "transparent",
+                  "#FFE4E1",
+                  "#E6E6FA",
+                  "#F0F8FF",
+                  "#F5F5DC",
+                  "#FFFACD",
+                  "#F0FFF0",
+                  "#FFF0F5",
+                ].map((color) => (
+                  <TouchableOpacity
+                    key={color}
+                    style={[
+                      styles.colorOption,
+                      {
+                        backgroundColor:
+                          color === "transparent" ? "#FFFFFF" : color,
+                      },
+                      (activeInput === "title"
+                        ? titleTextStyle.backgroundColor
+                        : bodyTextStyle.backgroundColor) === color && [
+                        styles.selectedColor,
+                        { borderColor: theme.colors.primary },
+                      ],
+                      color === "transparent" && styles.transparentColor,
+                    ]}
+                    onPress={() => {
+                      if (activeInput === "title") {
+                        setTitleTextStyle((prev) => ({
+                          ...prev,
+                          backgroundColor:
+                            prev.backgroundColor === color
+                              ? "transparent"
+                              : color, // Toggle: if same color, reset to transparent
+                        }));
+                      } else {
+                        setBodyTextStyle((prev) => ({
+                          ...prev,
+                          backgroundColor:
+                            prev.backgroundColor === color
+                              ? "transparent"
+                              : color, // Toggle: if same color, reset to transparent
+                        }));
+                      }
+                    }}
+                  />
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.colorPickerActions}>
+              <Button
+                mode="outlined"
+                onPress={() => setColorPickerVisible(false)}
+                style={styles.colorPickerButton}
+                textColor={theme.colors.primary}
+              >
+                Cancel
+              </Button>
+              <Button
+                mode="contained"
+                onPress={() => {
+                  setColorPickerVisible(false);
+                  // Colors are applied immediately to the active input
+                  Toast.show({
+                    type: "success",
+                    text1: "Colors Applied!",
+                    text2: `${activeInput === "title" ? "Title" : "Body"} styling updated`,
+                  });
+                }}
+                style={styles.colorPickerButton}
+                buttonColor={theme.colors.primary}
+              >
+                Apply
+              </Button>
+            </View>
           </View>
         </Modal>
       </Portal>
@@ -805,6 +1242,78 @@ const NotesScreen = () => {
             >
               Update
             </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* Actions Modal */}
+      <Portal>
+        <Modal
+          visible={actionsModalVisible}
+          onDismiss={() => setActionsModalVisible(false)}
+          dismissable={true}
+          contentContainerStyle={[
+            styles.deleteModal,
+            { backgroundColor: theme.colors.surface },
+          ]}
+        >
+          <View style={styles.deleteModalContent}>
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity
+                style={styles.actionButtonLarge}
+                onPress={() => {
+                  setActionsModalVisible(false);
+                  openEditModal(selectedNote);
+                }}
+              >
+                <MaterialIcons
+                  name="edit"
+                  size={24}
+                  color={theme.colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.actionButtonText,
+                    { color: theme.colors.primary },
+                  ]}
+                >
+                  Edit Note
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButtonLarge}
+                onPress={() => {
+                  setActionsModalVisible(false);
+                  setDeleteModalVisible(true);
+                }}
+              >
+                <MaterialIcons
+                  name="delete-outline"
+                  size={24}
+                  color={theme.colors.error}
+                />
+                <Text
+                  style={[
+                    styles.actionButtonText,
+                    { color: theme.colors.error },
+                  ]}
+                >
+                  Delete Note
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.deleteModalActions}>
+              <Button
+                mode="outlined"
+                onPress={() => setActionsModalVisible(false)}
+                style={styles.deleteModalButton}
+                textColor={theme.colors.primary}
+              >
+                Cancel
+              </Button>
+            </View>
           </View>
         </Modal>
       </Portal>
@@ -921,7 +1430,6 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   searchContainer: {
-    backgroundColor: "#ffffff",
     padding: 15,
     margin: 10,
     marginBottom: 20,
@@ -934,6 +1442,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   emptyState: {
     alignItems: "center",
@@ -953,19 +1465,40 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 40,
   },
-  notesList: {
-    paddingHorizontal: 10,
-  },
-  noteCard: {
-    marginBottom: 16,
+  notesContainer: {
+    borderRadius: 12,
     elevation: 2,
-    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    margin: 16,
+  },
+  notesContent: {
+    padding: 0,
+  },
+  noteRowTouchable: {
+    width: "100%",
+  },
+  noteRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+  },
+  noteDivider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginHorizontal: 16,
   },
   noteHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
+    alignItems: "center",
+    marginBottom: 0,
   },
   noteTitleContainer: {
     flex: 1,
@@ -987,7 +1520,6 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.05)",
   },
   noteBodyContainer: {
     marginTop: 5,
@@ -1097,7 +1629,6 @@ const styles = StyleSheet.create({
 
   // Add Note Modal Styles
   addNoteModal: {
-    backgroundColor: "white",
     margin: 0,
     flex: 1,
     width: "100%",
@@ -1105,19 +1636,16 @@ const styles = StyleSheet.create({
   },
   addNoteContainer: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
     width: "100%",
     height: "100%",
   },
   addNoteHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
     // Enhanced shadow for iOS
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -1127,13 +1655,30 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 10,
   },
+  addNoteHeaderTopRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  cuteRoundButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   addNoteHeaderButton: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: "#F3F4F6",
   },
   addNoteButtonText: {
     marginLeft: 6,
@@ -1141,16 +1686,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  addNoteHeaderIcons: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+
   addNoteIconButton: {
     padding: 10,
     marginHorizontal: 2,
     borderRadius: 8,
-    backgroundColor: "#F3F4F6",
   },
   addNoteSaveButton: {
     backgroundColor: "#3B82F6",
@@ -1163,6 +1703,80 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
+  },
+
+  // Color Picker Modal Styles
+  colorPickerModal: {
+    backgroundColor: "white",
+    padding: 16,
+    margin: 20,
+    borderRadius: 12,
+    maxWidth: "95%",
+    alignSelf: "center",
+    position: "absolute",
+    top: 60,
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  colorPickerContent: {
+    alignItems: "center",
+  },
+  colorPickerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  colorSection: {
+    width: "100%",
+    marginBottom: 16,
+  },
+  colorSectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  colorGrid: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+  },
+  colorOption: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+  },
+  selectedColor: {
+    borderWidth: 3,
+  },
+  transparentColor: {
+    borderStyle: "dashed",
+    borderColor: "#999",
+  },
+  colorPickerActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+    width: "100%",
+    marginTop: 16,
+  },
+  colorPickerButton: {
+    flex: 1,
+    borderRadius: 8,
+  },
+
+  formattingIcon: {
+    padding: 10,
+    marginHorizontal: 2,
+    borderRadius: 8,
   },
   addNoteSaveButtonText: {
     color: "white",
@@ -1231,19 +1845,6 @@ const styles = StyleSheet.create({
   noteHeaderTouchable: {
     width: "100%",
   },
-  notePreviewContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-  },
-  expandIndicator: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
   expandedContent: {
     marginTop: 12,
     paddingTop: 12,
@@ -1290,6 +1891,23 @@ const styles = StyleSheet.create({
   },
   deleteConfirmButton: {
     borderWidth: 0,
+  },
+
+  actionButtonsContainer: {
+    marginVertical: 20,
+    gap: 12,
+  },
+  actionButtonLarge: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
+    gap: 12,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 
   numberDivider: {

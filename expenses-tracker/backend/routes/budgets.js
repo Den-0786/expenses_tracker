@@ -1,19 +1,18 @@
 const express = require("express");
 const { PrismaClient } = require("@prisma/client");
+const { authenticateToken } = require("../middleware/auth");
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get all budgets for a user
-router.get("/", async (req, res) => {
+router.get("/", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
 
     const budgets = await prisma.budget.findMany({
       where: { userId },
       orderBy: {
-        startDate: "desc",
+        createdAt: "desc",
       },
     });
 
@@ -22,7 +21,6 @@ router.get("/", async (req, res) => {
       budgets,
     });
   } catch (error) {
-    console.error("Get budgets error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to get budgets",
@@ -30,17 +28,15 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Create new budget
-router.post("/", async (req, res) => {
+router.post("/", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { amount, period, startDate, endDate } = req.body;
 
-    if (!amount || !period || !startDate || !endDate) {
+    if (!amount || !period) {
       return res.status(400).json({
         error: "Missing required fields",
-        message: "Amount, period, start date, and end date are required",
+        message: "Amount and period are required",
       });
     }
 
@@ -48,8 +44,8 @@ router.post("/", async (req, res) => {
       data: {
         amount: parseFloat(amount),
         period,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate: startDate ? new Date(startDate) : new Date(),
+        endDate: endDate ? new Date(endDate) : new Date(),
         userId,
       },
     });
@@ -60,7 +56,6 @@ router.post("/", async (req, res) => {
       budget,
     });
   } catch (error) {
-    console.error("Create budget error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to create budget",
@@ -68,18 +63,16 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Update budget
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { id } = req.params;
     const { amount, period, startDate, endDate } = req.body;
 
     const budget = await prisma.budget.update({
       where: {
         id: parseInt(id),
-        userId, // Ensure user owns this budget
+        userId,
       },
       data: {
         amount: amount ? parseFloat(amount) : undefined,
@@ -95,7 +88,6 @@ router.put("/:id", async (req, res) => {
       budget,
     });
   } catch (error) {
-    console.error("Update budget error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to update budget",
@@ -103,17 +95,15 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// Delete budget
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { id } = req.params;
 
     await prisma.budget.delete({
       where: {
         id: parseInt(id),
-        userId, // Ensure user owns this budget
+        userId,
       },
     });
 
@@ -122,7 +112,6 @@ router.delete("/:id", async (req, res) => {
       message: "Budget deleted successfully",
     });
   } catch (error) {
-    console.error("Delete budget error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to delete budget",

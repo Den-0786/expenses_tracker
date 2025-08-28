@@ -1,137 +1,129 @@
 const express = require("express");
 const { PrismaClient } = require("@prisma/client");
+const { authenticateToken } = require("../middleware/auth");
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get onboarding status
-router.get("/status", async (req, res) => {
+router.get("/status", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
-    
+    const userId = req.user.id;
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
-        id: true,
         hasCompletedOnboarding: true,
-        createdAt: true
-      }
+      },
     });
 
     if (!user) {
       return res.status(404).json({
         error: "User not found",
-        message: "User does not exist"
+        message: "User does not exist",
       });
     }
 
     res.json({
       success: true,
       hasCompletedOnboarding: user.hasCompletedOnboarding,
-      createdAt: user.createdAt
     });
-
   } catch (error) {
-    console.error("Get onboarding status error:", error);
     res.status(500).json({
       error: "Internal server error",
-      message: "Failed to get onboarding status"
+      message: "Failed to get onboarding status",
     });
   }
 });
 
-// Complete onboarding
-router.post("/complete", async (req, res) => {
+router.post("/complete", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
-    const { hasCompletedOnboarding } = req.body;
+    const userId = req.user.id;
+    const { preferences } = req.body;
 
-    const updatedUser = await prisma.user.update({
+    const user = await prisma.user.update({
       where: { id: userId },
       data: {
-        hasCompletedOnboarding: hasCompletedOnboarding !== undefined ? hasCompletedOnboarding : true
+        hasCompletedOnboarding: true,
       },
       select: {
         id: true,
         username: true,
         email: true,
         hasCompletedOnboarding: true,
-        updatedAt: true
-      }
+      },
     });
+
+    if (preferences && preferences.categories) {
+      for (const category of preferences.categories) {
+        await prisma.category.create({
+          data: {
+            name: category.name,
+            type: category.type,
+            color: category.color,
+            icon: category.icon,
+            userId,
+          },
+        });
+      }
+    }
 
     res.json({
       success: true,
       message: "Onboarding completed successfully",
-      user: updatedUser
+      user,
     });
-
   } catch (error) {
-    console.error("Complete onboarding error:", error);
     res.status(500).json({
       error: "Internal server error",
-      message: "Failed to complete onboarding"
+      message: "Failed to complete onboarding",
     });
   }
 });
 
-// Get onboarding summary
-router.get("/summary", async (req, res) => {
+router.get("/summary", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
-    
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        hasCompletedOnboarding: true,
-        createdAt: true
-      }
+    const userId = req.user.id;
+
+    const [expenses, income, budgets, notes] = await Promise.all([
+      prisma.expense.count({ where: { userId } }),
+      prisma.income.count({ where: { userId } }),
+      prisma.budget.count({ where: { userId } }),
+      prisma.note.count({ where: { userId } }),
+    ]);
+
+    const totalExpenses = await prisma.expense.aggregate({
+      where: { userId },
+      _sum: { amount: true },
     });
 
-    if (!user) {
-      return res.status(404).json({
-        error: "User not found",
-        message: "User does not exist"
-      });
-    }
-
-    // Get basic stats for onboarding summary
-    const totalExpenses = await prisma.expense.count({
-      where: { userId }
-    });
-
-    const totalIncome = await prisma.income.count({
-      where: { userId }
-    });
-
-    const totalBudgets = await prisma.budget.count({
-      where: { userId }
+    const totalIncome = await prisma.income.aggregate({
+      where: { userId },
+      _sum: { amount: true },
     });
 
     res.json({
       success: true,
-      user: {
-        username: user.username,
-        hasCompletedOnboarding: user.hasCompletedOnboarding,
-        memberSince: user.createdAt
-      },
       summary: {
-        totalExpenses,
-        totalIncome,
-        totalBudgets
-      }
+        expenses: {
+          count: expenses,
+          total: totalExpenses._sum.amount || 0,
+        },
+        income: {
+          count: income,
+          total: totalIncome._sum.amount || 0,
+        },
+        budgets: {
+          count: budgets,
+        },
+        notes: {
+          count: notes,
+        },
+      },
     });
-
   } catch (error) {
-    console.error("Get onboarding summary error:", error);
     res.status(500).json({
       error: "Internal server error",
-      message: "Failed to get onboarding summary"
+      message: "Failed to get onboarding summary",
     });
   }
 });

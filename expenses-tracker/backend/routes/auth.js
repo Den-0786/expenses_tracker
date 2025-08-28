@@ -6,12 +6,10 @@ const { PrismaClient } = require("@prisma/client");
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Sign Up
 router.post("/signup", async (req, res) => {
   try {
     const { username, email, pin } = req.body;
 
-    // Validation
     if (!username || !email || !pin) {
       return res.status(400).json({
         error: "Missing required fields",
@@ -19,7 +17,6 @@ router.post("/signup", async (req, res) => {
       });
     }
 
-    // Check if user already exists
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [{ username }, { email }],
@@ -33,10 +30,8 @@ router.post("/signup", async (req, res) => {
       });
     }
 
-    // Hash PIN
     const hashedPin = await bcrypt.hash(pin, 10);
 
-    // Create user
     const user = await prisma.user.create({
       data: {
         username,
@@ -53,7 +48,6 @@ router.post("/signup", async (req, res) => {
       },
     });
 
-    // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, username: user.username },
       process.env.JWT_SECRET,
@@ -67,7 +61,6 @@ router.post("/signup", async (req, res) => {
       token,
     });
   } catch (error) {
-    console.error("Signup error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to create user",
@@ -75,7 +68,6 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// Sign In
 router.post("/signin", async (req, res) => {
   try {
     const { pin } = req.body;
@@ -87,7 +79,6 @@ router.post("/signin", async (req, res) => {
       });
     }
 
-    // Find user by PIN (for development, you might want to add username/email)
     const user = await prisma.user.findFirst({
       where: {
         OR: [
@@ -113,7 +104,6 @@ router.post("/signin", async (req, res) => {
       });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, username: user.username },
       process.env.JWT_SECRET,
@@ -132,7 +122,6 @@ router.post("/signin", async (req, res) => {
       token,
     });
   } catch (error) {
-    console.error("Signin error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to sign in",
@@ -175,7 +164,6 @@ router.get("/verify", async (req, res) => {
       user,
     });
   } catch (error) {
-    console.error("Token verification error:", error);
     res.status(401).json({
       error: "Invalid token",
       message: "Token verification failed",

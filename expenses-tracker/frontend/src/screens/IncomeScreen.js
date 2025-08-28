@@ -30,9 +30,12 @@ import {
   isThisMonth,
 } from "date-fns";
 import { useDatabase } from "../context/DatabaseContext";
+import { useTheme } from "../context/ThemeContext";
 
 const IncomeScreen = () => {
-  const { addIncome, getIncomeByDateRange, getAllIncome } = useDatabase();
+  const { addIncome, getIncomeByDateRange, getAllIncome, deleteIncome } =
+    useDatabase();
+  const { theme, isDarkMode } = useTheme();
 
   const [income, setIncome] = useState([]);
   const [filteredIncome, setFilteredIncome] = useState([]);
@@ -44,10 +47,15 @@ const IncomeScreen = () => {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
-  const [dateRange, setDateRange] = useState("month"); // week, month, all
+  const [dateRange, setDateRange] = useState("month");
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarType, setSnackbarType] = useState("success");
+  const [editIncomeModalVisible, setEditIncomeModalVisible] = useState(false);
+  const [editingIncome, setEditingIncome] = useState(null);
+  const [actionsModalVisible, setActionsModalVisible] = useState(false);
+  const [selectedIncome, setSelectedIncome] = useState(null);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
 
   useEffect(() => {
     loadIncome();
@@ -79,10 +87,9 @@ const IncomeScreen = () => {
           );
           break;
         default:
-          startDate = "2020-01-01"; // All time
+          startDate = "2020-01-01";
       }
 
-      // Load income data based on date range
       if (dateRange === "all") {
         const allIncome = await getAllIncome();
         setIncome(allIncome);
@@ -91,7 +98,6 @@ const IncomeScreen = () => {
         setIncome(incomeData);
       }
     } catch (error) {
-      // Silently handle error
       setIncome([]);
     }
   };
@@ -105,7 +111,6 @@ const IncomeScreen = () => {
   const filterIncome = () => {
     let filtered = income;
 
-    // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(
         (income) =>
@@ -117,7 +122,6 @@ const IncomeScreen = () => {
       );
     }
 
-    // Apply category filter
     if (selectedFilter !== "all") {
       filtered = filtered.filter(
         (income) => income.category === selectedFilter
@@ -137,13 +141,74 @@ const IncomeScreen = () => {
     setSnackbarVisible(false);
   };
 
+  const handleEditIncome = (income) => {
+    setEditingIncome({
+      id: income.id,
+      amount: income.amount.toString(),
+      description: income.description,
+      category: income.category || "General",
+      source: income.source || income.description,
+    });
+    setEditIncomeModalVisible(true);
+    setActionsModalVisible(false);
+  };
+
+  const handleDeleteIncome = async (income) => {
+    setSelectedIncome(income);
+    setDeleteConfirmVisible(true);
+    setActionsModalVisible(false);
+  };
+
+  const confirmDeleteIncome = async () => {
+    try {
+      await deleteIncome(selectedIncome.id);
+      await loadIncome();
+      showSnackbar("Income deleted successfully!", "success");
+      setDeleteConfirmVisible(false);
+      setSelectedIncome(null);
+    } catch (error) {
+      showSnackbar("Failed to delete income. Please try again.", "error");
+    }
+  };
+
+  const handleUpdateIncome = async () => {
+    if (!editingIncome.amount || !editingIncome.description) {
+      showSnackbar("Please fill in all required fields.", "error");
+      return;
+    }
+
+    if (!/^\d*\.?\d{0,2}$/.test(editingIncome.amount)) {
+      showSnackbar("Please enter a valid amount.", "error");
+      return;
+    }
+
+    const amount = parseFloat(editingIncome.amount);
+    if (isNaN(amount) || amount <= 0) {
+      showSnackbar("Please enter a valid amount greater than 0.", "error");
+      return;
+    }
+
+    try {
+      setEditIncomeModalVisible(false);
+      setEditingIncome(null);
+      await loadIncome();
+      showSnackbar("Income updated successfully!", "success");
+    } catch (error) {
+      showSnackbar("Failed to update income. Please try again.", "error");
+    }
+  };
+
+  const openActionsModal = (income) => {
+    setSelectedIncome(income);
+    setActionsModalVisible(true);
+  };
+
   const handleAddIncome = async () => {
     if (!newIncome.amount || !newIncome.description) {
       showSnackbar("Please fill in all required fields.", "error");
       return;
     }
 
-    // Validate amount format
     if (!/^\d*\.?\d{0,2}$/.test(newIncome.amount)) {
       showSnackbar("Please enter a valid amount.", "error");
       return;
@@ -159,15 +224,14 @@ const IncomeScreen = () => {
       await addIncome(
         amount,
         newIncome.description,
-        "General", // Default category
-        newIncome.description, // Use description as source
+        "General",
+        newIncome.description,
         format(new Date(), "yyyy-MM-dd")
       );
 
       setNewIncome({ amount: "", description: "" });
       setAddIncomeModalVisible(false);
 
-      // Refresh income data to show the newly added income
       await loadIncome();
 
       showSnackbar("Income added successfully!", "success");
@@ -228,18 +292,29 @@ const IncomeScreen = () => {
 
   return (
     <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
-      {/* Sticky Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Income</Text>
         <Text style={styles.headerSubtitle}>
-          Total: ${getTotalAmount().toFixed(2)}
+          Total: GHC {getTotalAmount().toFixed(2)}
         </Text>
       </View>
 
-      {/* Main Content Container - Gray Parent Card */}
-      <View style={styles.contentContainer}>
-        {/* Sticky Filters */}
-        <View style={styles.filtersContainer}>
+      <View
+        style={[
+          styles.contentContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
+        <View
+          style={[
+            styles.filtersContainer,
+            {
+              backgroundColor: theme.colors.surface,
+              borderWidth: 2,
+              borderColor: "#90EE90",
+            },
+          ]}
+        >
           <Searchbar
             placeholder="Search income..."
             onChangeText={setSearchQuery}
@@ -282,7 +357,6 @@ const IncomeScreen = () => {
               { key: "day", label: "Today" },
               { key: "week", label: "This Week" },
               { key: "month", label: "This Month" },
-              { key: "all", label: "All Time" },
             ].map((filter) => (
               <Chip
                 key={filter.key}
@@ -297,7 +371,6 @@ const IncomeScreen = () => {
           </ScrollView>
         </View>
 
-        {/* Scrollable Income List */}
         <ScrollView
           style={styles.scrollView}
           refreshControl={
@@ -307,7 +380,7 @@ const IncomeScreen = () => {
         >
           {filteredIncome.length === 0 ? (
             <View style={styles.emptyState}>
-              <MaterialIcons name="trending-up" size={64} color="#ccc" />
+              <MaterialIcons name="trending-up" size={64} color="#999" />
               <Text style={styles.emptyStateText}>No income found</Text>
               <Text style={styles.emptyStateSubtext}>
                 {searchQuery
@@ -320,35 +393,47 @@ const IncomeScreen = () => {
               <View key={date} style={styles.dateGroup}>
                 <Text style={styles.dateHeader}>{getDateLabel(date)}</Text>
                 {dateIncome.map((income) => (
-                  <Card key={income.id} style={styles.incomeCard}>
+                  <Card
+                    key={income.id}
+                    style={[
+                      styles.incomeCard,
+                      { backgroundColor: theme.colors.surface },
+                    ]}
+                  >
                     <Card.Content>
                       <View style={styles.incomeHeader}>
                         <View style={styles.incomeLeft}>
-                          <MaterialIcons
-                            name={getCategoryIcon(income.category)}
-                            size={24}
-                            color="#4CAF50"
-                            style={styles.incomeIcon}
-                          />
                           <View style={styles.incomeInfo}>
-                            <Text style={styles.incomeDescription}>
+                            <Text
+                              style={[
+                                styles.incomeDescription,
+                                { color: theme.colors.text },
+                              ]}
+                            >
                               {income.description}
                             </Text>
-                            <Text style={styles.incomeCategory}>
-                              {income.category || "General"}
-                            </Text>
-                            <Text style={styles.incomeSource}>
-                              {income.source || "Unknown"}
-                            </Text>
-                            <Text style={styles.incomeTime}>
-                              {format(parseISO(income.created_at), "h:mm a")}
+                            <Text style={styles.incomeAmount}>
+                              +GHC {income.amount.toFixed(2)}
                             </Text>
                           </View>
                         </View>
                         <View style={styles.incomeRight}>
-                          <Text style={styles.incomeAmount}>
-                            +${income.amount.toFixed(2)}
-                          </Text>
+                          <TouchableOpacity
+                            style={[
+                              styles.actionButton,
+                              {
+                                backgroundColor: theme.colors.surface,
+                                borderColor: theme.colors.border || "#e0e0e0",
+                              },
+                            ]}
+                            onPress={() => openActionsModal(income)}
+                          >
+                            <MaterialIcons
+                              name="more-vert"
+                              size={20}
+                              color={theme.colors.textSecondary}
+                            />
+                          </TouchableOpacity>
                         </View>
                       </View>
                     </Card.Content>
@@ -360,22 +445,35 @@ const IncomeScreen = () => {
         </ScrollView>
       </View>
 
-      {/* Add Income FAB */}
       <FAB
         style={styles.fab}
         icon="plus"
         onPress={() => setAddIncomeModalVisible(true)}
       />
 
-      {/* Add Income Modal */}
       <Portal>
         <Modal
           visible={addIncomeModalVisible}
           onDismiss={() => setAddIncomeModalVisible(false)}
-          contentContainerStyle={styles.modal}
+          contentContainerStyle={[
+            styles.modal,
+            {
+              backgroundColor: theme.colors.surface,
+              borderWidth: 2,
+              borderColor: "#90EE90",
+              marginTop: -80,
+            },
+          ]}
         >
-          <Title style={styles.modalTitle}>Add Income</Title>
-          <Text style={styles.modalSubtitle}>
+          <Title style={[styles.modalTitle, { color: theme.colors.text }]}>
+            Add Income
+          </Title>
+          <Text
+            style={[
+              styles.modalSubtitle,
+              { color: theme.colors.textSecondary },
+            ]}
+          >
             Enter the amount and describe the income source
           </Text>
 
@@ -383,9 +481,7 @@ const IncomeScreen = () => {
             label="Amount"
             value={newIncome.amount}
             onChangeText={(text) => {
-              // Real-time validation: only allow numbers, decimal point, and backspace
               const numericText = text.replace(/[^0-9.]/g, "");
-              // Ensure only one decimal point
               const parts = numericText.split(".");
               if (parts.length <= 2) {
                 setNewIncome({ ...newIncome, amount: numericText });
@@ -395,19 +491,30 @@ const IncomeScreen = () => {
             mode="outlined"
             style={[
               styles.modalInput,
+              { backgroundColor: theme.colors.surface },
               newIncome.amount &&
                 !/^\d*\.?\d{0,2}$/.test(newIncome.amount) &&
                 styles.errorInput,
             ]}
             placeholder="0.00"
-            left={<TextInput.Affix text="$" />}
+            placeholderTextColor={theme.colors.textSecondary}
+            left={<TextInput.Affix text="GHC" />}
             error={
               newIncome.amount && !/^\d*\.?\d{0,2}$/.test(newIncome.amount)
             }
+            theme={{
+              colors: {
+                primary: theme.colors.primary,
+                text: theme.colors.text,
+                placeholder: theme.colors.textSecondary,
+              },
+            }}
           />
 
           {newIncome.amount && !/^\d*\.?\d{0,2}$/.test(newIncome.amount) && (
-            <Text style={styles.validationError}>
+            <Text
+              style={[styles.validationError, { color: theme.colors.error }]}
+            >
               Please enter a valid amount (e.g., 100.50)
             </Text>
           )}
@@ -419,8 +526,19 @@ const IncomeScreen = () => {
               setNewIncome({ ...newIncome, description: text })
             }
             mode="outlined"
-            style={styles.modalInput}
+            style={[
+              styles.modalInput,
+              { backgroundColor: theme.colors.surface },
+            ]}
             placeholder="Salary from Company, Freelance work, etc."
+            placeholderTextColor={theme.colors.textSecondary}
+            theme={{
+              colors: {
+                primary: theme.colors.primary,
+                text: theme.colors.text,
+                placeholder: theme.colors.textSecondary,
+              },
+            }}
           />
 
           <View style={styles.modalButtons}>
@@ -428,6 +546,8 @@ const IncomeScreen = () => {
               mode="outlined"
               onPress={() => setAddIncomeModalVisible(false)}
               style={styles.modalButton}
+              textColor={theme.colors.text}
+              buttonColor={theme.colors.surface}
             >
               Cancel
             </Button>
@@ -435,8 +555,215 @@ const IncomeScreen = () => {
               mode="contained"
               onPress={handleAddIncome}
               style={styles.modalButton}
+              buttonColor={theme.colors.primary}
+              textColor={theme.colors.surface}
             >
               Add
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      <Portal>
+        <Modal
+          visible={actionsModalVisible}
+          onDismiss={() => setActionsModalVisible(false)}
+          contentContainerStyle={[
+            styles.actionsModal,
+            {
+              backgroundColor: theme.colors.surface,
+              borderWidth: 2,
+              borderColor: "#90EE90",
+            },
+          ]}
+        >
+          <Title
+            style={[styles.actionsModalTitle, { color: theme.colors.text }]}
+          >
+            Income Actions
+          </Title>
+          <View style={styles.actionsList}>
+            <TouchableOpacity
+              style={[
+                styles.actionItem,
+                { borderBottomColor: theme.colors.border || "#e0e0e0" },
+              ]}
+              onPress={() => handleEditIncome(selectedIncome)}
+            >
+              <MaterialIcons name="edit" size={24} color="#2196F3" />
+              <Text style={[styles.actionText, { color: theme.colors.text }]}>
+                Edit Income
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionItem}
+              onPress={() => handleDeleteIncome(selectedIncome)}
+            >
+              <MaterialIcons name="delete" size={24} color="#F44336" />
+              <Text style={[styles.actionText, { color: theme.colors.text }]}>
+                Delete Income
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+      </Portal>
+
+      <Portal>
+        <Modal
+          visible={editIncomeModalVisible}
+          onDismiss={() => setEditIncomeModalVisible(false)}
+          contentContainerStyle={[
+            styles.modal,
+            {
+              backgroundColor: theme.colors.surface,
+              borderWidth: 2,
+              borderColor: "#90EE90",
+              marginTop: -80,
+            },
+          ]}
+        >
+          <Title style={[styles.modalTitle, { color: theme.colors.text }]}>
+            Edit Income
+          </Title>
+          <Text
+            style={[
+              styles.modalSubtitle,
+              { color: theme.colors.textSecondary },
+            ]}
+          >
+            Update the income details
+          </Text>
+
+          <TextInput
+            label="Amount"
+            value={editingIncome?.amount || ""}
+            onChangeText={(text) => {
+              const numericText = text.replace(/[^0-9.]/g, "");
+              const parts = numericText.split(".");
+              if (parts.length <= 2) {
+                setEditingIncome({ ...editingIncome, amount: numericText });
+              }
+            }}
+            keyboardType="numeric"
+            mode="outlined"
+            style={[
+              styles.modalInput,
+              { backgroundColor: theme.colors.surface },
+              editingIncome?.amount &&
+                !/^\d*\.?\d{0,2}$/.test(editingIncome.amount) &&
+                styles.errorInput,
+            ]}
+            placeholder="0.00"
+            placeholderTextColor={theme.colors.textSecondary}
+            left={<TextInput.Affix text="GHC" />}
+            error={
+              editingIncome?.amount &&
+              !/^\d*\.?\d{0,2}$/.test(editingIncome.amount)
+            }
+            theme={{
+              colors: {
+                primary: theme.colors.primary,
+                text: theme.colors.text,
+                placeholder: theme.colors.textSecondary,
+              },
+            }}
+          />
+
+          <TextInput
+            label="Description/Source"
+            value={editingIncome?.description || ""}
+            onChangeText={(text) =>
+              setEditingIncome({ ...editingIncome, description: text })
+            }
+            mode="outlined"
+            style={[
+              styles.modalInput,
+              { backgroundColor: theme.colors.surface },
+            ]}
+            placeholder="Salary from Company, Freelance work, etc."
+            placeholderTextColor={theme.colors.textSecondary}
+            theme={{
+              colors: {
+                primary: theme.colors.primary,
+                text: theme.colors.text,
+                placeholder: theme.colors.textSecondary,
+              },
+            }}
+          />
+
+          <View style={styles.modalButtons}>
+            <Button
+              mode="outlined"
+              onPress={() => setEditIncomeModalVisible(false)}
+              style={styles.modalButton}
+              textColor={theme.colors.text}
+              buttonColor={theme.colors.surface}
+            >
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleUpdateIncome}
+              style={styles.modalButton}
+              buttonColor={theme.colors.primary}
+              textColor={theme.colors.surface}
+            >
+              Update
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      <Portal>
+        <Modal
+          visible={deleteConfirmVisible}
+          onDismiss={() => setDeleteConfirmVisible(false)}
+          contentContainerStyle={[
+            styles.deleteConfirmModal,
+            {
+              backgroundColor: theme.colors.surface,
+              borderWidth: 2,
+              borderColor: "#F44336",
+            },
+          ]}
+        >
+          <Title
+            style={[styles.deleteConfirmTitle, { color: theme.colors.text }]}
+          >
+            Delete Income
+          </Title>
+          <Text
+            style={[
+              styles.deleteConfirmText,
+              { color: theme.colors.textSecondary },
+            ]}
+          >
+            Are you sure you want to delete "{selectedIncome?.description}"?
+          </Text>
+          <Text style={[styles.deleteConfirmAmount, { color: "#F44335" }]}>
+            GHC {selectedIncome?.amount?.toFixed(2)}
+          </Text>
+          <Text style={[styles.deleteConfirmWarning, { color: "#F44335" }]}>
+            This action cannot be undone.
+          </Text>
+          <View style={styles.deleteConfirmButtons}>
+            <Button
+              mode="outlined"
+              onPress={() => setDeleteConfirmVisible(false)}
+              style={styles.deleteConfirmButton}
+              textColor={theme.colors.text}
+              buttonColor={theme.colors.surface}
+            >
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={confirmDeleteIncome}
+              style={styles.deleteConfirmButton}
+              buttonColor="#F44335"
+              textColor="#FFFFFF"
+            >
+              Delete
             </Button>
           </View>
         </Modal>
@@ -489,7 +816,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderBottomLeftRadius: 20,
@@ -505,7 +831,6 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   filtersContainer: {
-    backgroundColor: "#ffffff",
     padding: 15,
     margin: 10,
     marginBottom: 20,
@@ -581,17 +906,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
-  incomeIcon: {
-    marginRight: 12,
-  },
+
   incomeInfo: {
     flex: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingRight: 10,
   },
   incomeDescription: {
     fontSize: 16,
     fontWeight: "600",
     color: "#333",
-    marginBottom: 2,
+    flex: 1,
+    marginRight: 10,
   },
   incomeCategory: {
     fontSize: 12,
@@ -608,13 +936,13 @@ const styles = StyleSheet.create({
     color: "#999",
   },
   incomeRight: {
-    alignItems: "flex-end",
+    alignItems: "center",
+    justifyContent: "center",
   },
   incomeAmount: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#4CAF50",
-    marginBottom: 8,
   },
   fab: {
     position: "absolute",
@@ -624,7 +952,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#4CAF50",
   },
   modal: {
-    backgroundColor: "white",
     padding: 20,
     margin: 20,
     borderRadius: 12,
@@ -644,7 +971,6 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     marginBottom: 15,
-    backgroundColor: "#ffffff",
   },
   errorInput: {
     borderColor: "#F44336",
@@ -664,6 +990,81 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     marginHorizontal: 5,
+  },
+  actionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  actionsModal: {
+    padding: 20,
+    margin: 20,
+    borderRadius: 12,
+    maxWidth: 300,
+    alignSelf: "center",
+  },
+  actionsModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  actionsList: {
+    gap: 0,
+  },
+  actionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    gap: 15,
+  },
+  actionText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  deleteConfirmModal: {
+    padding: 20,
+    margin: 20,
+    borderRadius: 12,
+    maxWidth: 350,
+    alignSelf: "center",
+  },
+  deleteConfirmTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  deleteConfirmText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 15,
+    lineHeight: 22,
+  },
+  deleteConfirmAmount: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  deleteConfirmWarning: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 20,
+    fontStyle: "italic",
+  },
+  deleteConfirmButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 15,
+  },
+  deleteConfirmButton: {
+    flex: 1,
   },
 });
 

@@ -9,84 +9,57 @@ router.get("/", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const notes = await prisma.note.findMany({
+    const notifications = await prisma.notification.findMany({
       where: { userId },
       orderBy: {
         createdAt: "desc",
       },
+      take: 50,
     });
 
     res.json({
       success: true,
-      notes,
+      notifications,
     });
   } catch (error) {
     res.status(500).json({
       error: "Internal server error",
-      message: "Failed to get notes",
+      message: "Failed to get notifications",
     });
   }
 });
 
-router.post("/", authenticateToken, async (req, res) => {
+router.post("/mark-read", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { title, content } = req.body;
+    const { notificationIds } = req.body;
 
-    if (!title || !content) {
+    if (!notificationIds || !Array.isArray(notificationIds)) {
       return res.status(400).json({
-        error: "Missing required fields",
-        message: "Title and content are required",
+        error: "Invalid notification IDs",
+        message: "Notification IDs array is required",
       });
     }
 
-    const note = await prisma.note.create({
-      data: {
-        title,
-        content,
-        userId,
-      },
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Note created successfully",
-      note,
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: "Internal server error",
-      message: "Failed to create note",
-    });
-  }
-});
-
-router.put("/:id", authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { id } = req.params;
-    const { title, content } = req.body;
-
-    const note = await prisma.note.update({
+    await prisma.notification.updateMany({
       where: {
-        id: parseInt(id),
+        id: { in: notificationIds },
         userId,
       },
       data: {
-        title: title || undefined,
-        content: content || undefined,
+        isRead: true,
+        readAt: new Date(),
       },
     });
 
     res.json({
       success: true,
-      message: "Note updated successfully",
-      note,
+      message: "Notifications marked as read",
     });
   } catch (error) {
     res.status(500).json({
       error: "Internal server error",
-      message: "Failed to update note",
+      message: "Failed to mark notifications as read",
     });
   }
 });
@@ -96,7 +69,7 @@ router.delete("/:id", authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
 
-    await prisma.note.delete({
+    await prisma.notification.delete({
       where: {
         id: parseInt(id),
         userId,
@@ -105,12 +78,12 @@ router.delete("/:id", authenticateToken, async (req, res) => {
 
     res.json({
       success: true,
-      message: "Note deleted successfully",
+      message: "Notification deleted successfully",
     });
   } catch (error) {
     res.status(500).json({
       error: "Internal server error",
-      message: "Failed to delete note",
+      message: "Failed to delete notification",
     });
   }
 });

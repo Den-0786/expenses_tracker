@@ -21,10 +21,8 @@ const SignInScreen = ({ navigation }) => {
   const [resetLoading, setResetLoading] = useState(false);
   const { signIn } = useAuth();
 
-  // Auto-hide error after 3 seconds
   const errorTimeoutRef = useRef(null);
 
-  // Clear error when user starts typing
   const handlePinChange = (text) => {
     setPin(text);
     if (error) {
@@ -32,21 +30,17 @@ const SignInScreen = ({ navigation }) => {
     }
   };
 
-  // Auto-hide error after 3 seconds
   useEffect(() => {
     if (error) {
-      // Clear any existing timeout
       if (errorTimeoutRef.current) {
         clearTimeout(errorTimeoutRef.current);
       }
 
-      // Set new timeout to hide error after 3 seconds
       errorTimeoutRef.current = setTimeout(() => {
         setError("");
       }, 3000);
     }
 
-    // Cleanup timeout on unmount
     return () => {
       if (errorTimeoutRef.current) {
         clearTimeout(errorTimeoutRef.current);
@@ -66,7 +60,6 @@ const SignInScreen = ({ navigation }) => {
     try {
       const result = await signIn(pin.trim());
       if (result.success) {
-        // Clear any error and navigate to onboarding first
         setError("");
         navigation.replace("Onboarding");
       } else {
@@ -75,7 +68,6 @@ const SignInScreen = ({ navigation }) => {
       }
     } catch (error) {
       setError("An error occurred. Please try again.");
-      console.error("Sign in error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +77,6 @@ const SignInScreen = ({ navigation }) => {
     setShowForgotPinModal(true);
     setError("");
     setSuccessMessage("");
-    // Clear any existing error timeout
     if (errorTimeoutRef.current) {
       clearTimeout(errorTimeoutRef.current);
     }
@@ -159,7 +150,6 @@ const SignInScreen = ({ navigation }) => {
                 <Text style={styles.successText}>{successMessage}</Text>
               ) : null}
 
-              {/* Forgot PIN Button */}
               <Button
                 mode="text"
                 onPress={handleForgotPin}
@@ -198,7 +188,6 @@ const SignInScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Forgot PIN Modal */}
         <Portal>
           <Modal
             visible={showForgotPinModal}
@@ -372,7 +361,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
-  // Forgot PIN Button styles
   forgotPinButton: {
     marginTop: 20,
     alignSelf: "center",
@@ -383,7 +371,6 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
     color: "rgba(255,255,255,0.8)",
   },
-  // Modal styles
   modalContainer: {
     backgroundColor: "white",
     margin: 20,

@@ -51,7 +51,6 @@ const SignUpScreen = ({ navigation }) => {
       }
     } catch (error) {
       setError("An error occurred. Please try again.");
-      console.error("Sign up error:", error);
     } finally {
       setIsLoading(false);
     }

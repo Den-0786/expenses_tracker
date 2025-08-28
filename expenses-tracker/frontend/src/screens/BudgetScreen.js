@@ -55,7 +55,6 @@ const BudgetScreen = () => {
     calculateCurrentSpending();
   }, []);
 
-  // Generate insights when budgets and spending data are available
   useEffect(() => {
     if (budgets && Object.values(budgets).some((budget) => budget > 0)) {
       generateBudgetInsights();
@@ -66,16 +65,13 @@ const BudgetScreen = () => {
     try {
       const savedBudgets = await getAllBudgets();
       setBudgets(savedBudgets);
-    } catch (error) {
-      console.error("Error loading budgets:", error);
-    }
+    } catch (error) {}
   };
 
   const calculateCurrentSpending = async () => {
     try {
       const now = new Date();
 
-      // Daily spending (today)
       const today = now.toISOString().split("T")[0];
       const todayExpenses = await getExpensesByDateRange(today, today);
       const dailyTotal = todayExpenses.reduce(
@@ -83,7 +79,6 @@ const BudgetScreen = () => {
         0
       );
 
-      // Previous day spending (yesterday)
       const yesterday = new Date(now);
       yesterday.setDate(now.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split("T")[0];
@@ -96,7 +91,6 @@ const BudgetScreen = () => {
         0
       );
 
-      // Weekly spending (current week)
       const weekStart = new Date(now);
       weekStart.setDate(now.getDate() - now.getDay() + 1);
       const weekExpenses = await getExpensesByDateRange(
@@ -108,7 +102,6 @@ const BudgetScreen = () => {
         0
       );
 
-      // Previous week spending
       const prevWeekStart = new Date(weekStart);
       prevWeekStart.setDate(weekStart.getDate() - 7);
       const prevWeekEnd = new Date(weekStart);
@@ -122,7 +115,6 @@ const BudgetScreen = () => {
         0
       );
 
-      // Monthly spending (current month)
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const monthExpenses = await getExpensesByDateRange(
         monthStart.toISOString().split("T")[0],
@@ -133,7 +125,6 @@ const BudgetScreen = () => {
         0
       );
 
-      // Previous month spending
       const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
       const prevMonthExpenses = await getExpensesByDateRange(
@@ -145,7 +136,6 @@ const BudgetScreen = () => {
         0
       );
 
-      // Yearly spending (current year)
       const yearStart = new Date(now.getFullYear(), 0, 1);
       const yearExpenses = await getExpensesByDateRange(
         yearStart.toISOString().split("T")[0],
@@ -156,7 +146,6 @@ const BudgetScreen = () => {
         0
       );
 
-      // Previous year spending
       const prevYearStart = new Date(now.getFullYear() - 1, 0, 1);
       const prevYearEnd = new Date(now.getFullYear() - 1, 11, 31);
       const prevYearExpenses = await getExpensesByDateRange(
@@ -182,11 +171,8 @@ const BudgetScreen = () => {
         yearly: previousYearlyTotal,
       });
 
-      // Generate budget insights
       generateBudgetInsights();
-    } catch (error) {
-      console.error("Error calculating current spending:", error);
-    }
+    } catch (error) {}
   };
 
   const showSnackbar = (message, type = "info") => {
@@ -206,7 +192,6 @@ const BudgetScreen = () => {
 
     const insights = {};
 
-    // Daily insights
     const dailyBudget = budgets.daily || 0;
     const dailySpent = currentSpending.daily || 0;
     const dailyPrevious = previousSpending.daily || 0;
@@ -245,7 +230,6 @@ const BudgetScreen = () => {
       }
     }
 
-    // Weekly insights
     const weeklyBudget = budgets.weekly || 0;
     const weeklySpent = currentSpending.weekly || 0;
     const weeklyPrevious = previousSpending.weekly || 0;
@@ -284,7 +268,6 @@ const BudgetScreen = () => {
       }
     }
 
-    // Monthly insights
     const monthlyBudget = budgets.monthly || 0;
     const monthlySpent = currentSpending.monthly || 0;
     const monthlyPrevious = previousSpending.monthly || 0;
@@ -323,7 +306,6 @@ const BudgetScreen = () => {
       }
     }
 
-    // Yearly insights
     const yearlyBudget = budgets.yearly || 0;
     const yearlySpent = currentSpending.yearly || 0;
     const yearlyPrevious = previousSpending.yearly || 0;
@@ -381,7 +363,6 @@ const BudgetScreen = () => {
       setEditMode(false);
       showSnackbar("Budgets updated successfully!", "success");
 
-      // Refresh spending calculations and insights
       await calculateCurrentSpending();
     } catch (error) {
       showSnackbar("Failed to update budgets. Please try again.", "error");
@@ -446,7 +427,6 @@ const BudgetScreen = () => {
     const remaining = getRemainingBudget(period);
     const insights = budgetInsights[period];
 
-    // Calculate comparison
     const spendingDifference = spending - previousPeriodSpending;
     let spendingChange = 0;
 
@@ -523,7 +503,6 @@ const BudgetScreen = () => {
             </View>
           </View>
 
-          {/* Previous Period Comparison */}
           {previousPeriodSpending > 0 && !isNaN(previousPeriodSpending) && (
             <View style={styles.comparisonSection}>
               <Text
@@ -603,7 +582,7 @@ const BudgetScreen = () => {
               >
                 Spent:
               </Text>
-              <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+              <Text style={[styles.detailValue, { color: "#4CAF50" }]}>
                 ${spending.toFixed(2)}
               </Text>
             </View>
@@ -620,17 +599,32 @@ const BudgetScreen = () => {
                 style={[
                   styles.detailValue,
                   {
-                    color:
-                      remaining > 0 ? theme.colors.success : theme.colors.error,
+                    color: (() => {
+                      const oneThird = budget / 3;
+                      if (remaining < oneThird) return "#E53935"; // Red if less than 1/3
+                      return "#FBC02D"; // Gold (default)
+                    })(),
                   },
                 ]}
               >
                 ${remaining.toFixed(2)}
               </Text>
+              {(() => {
+                const oneThird = budget / 3;
+                if (remaining < oneThird) {
+                  return (
+                    <Text
+                      style={[styles.statusIndicator, { color: "#E53935" }]}
+                    >
+                      🔴 Low Budget
+                    </Text>
+                  );
+                }
+                return null;
+              })()}
             </View>
           </View>
 
-          {/* Budget Insights */}
           {insights && insights.status && !isNaN(insights.status) && (
             <View
               style={[
@@ -675,20 +669,31 @@ const BudgetScreen = () => {
         end={{ x: 1, y: 1 }}
         locations={[0, 1]}
       >
-        {/* Sticky Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Budget Management</Text>
           <Text style={styles.headerSubtitle}>Track your spending limits</Text>
         </View>
 
-        {/* Main Content Container - Gray Parent Card */}
-        <View style={styles.contentContainer}>
+        <View
+          style={[
+            styles.contentContainer,
+            { backgroundColor: theme.colors.background },
+          ]}
+        >
           <ScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
           >
-            {/* Budget Overview */}
-            <View style={styles.overviewContainer}>
+            <View
+              style={[
+                styles.stickyOverviewContainer,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderBottomColor: theme.colors.border,
+                },
+              ]}
+            >
               <Card
                 style={[
                   styles.overviewCard,
@@ -724,7 +729,10 @@ const BudgetScreen = () => {
                         }
                         keyboardType="numeric"
                         mode="outlined"
-                        style={styles.input}
+                        style={[
+                          styles.input,
+                          { backgroundColor: theme.colors.surface },
+                        ]}
                         placeholder="0.00"
                         left={<TextInput.Affix text="$" />}
                       />
@@ -736,7 +744,10 @@ const BudgetScreen = () => {
                         }
                         keyboardType="numeric"
                         mode="outlined"
-                        style={styles.input}
+                        style={[
+                          styles.input,
+                          { backgroundColor: theme.colors.surface },
+                        ]}
                         placeholder="0.00"
                         left={<TextInput.Affix text="$" />}
                       />
@@ -748,7 +759,10 @@ const BudgetScreen = () => {
                         }
                         keyboardType="numeric"
                         mode="outlined"
-                        style={styles.input}
+                        style={[
+                          styles.input,
+                          { backgroundColor: theme.colors.surface },
+                        ]}
                         placeholder="0.00"
                         left={<TextInput.Affix text="$" />}
                       />
@@ -760,7 +774,10 @@ const BudgetScreen = () => {
                         }
                         keyboardType="numeric"
                         mode="outlined"
-                        style={styles.input}
+                        style={[
+                          styles.input,
+                          { backgroundColor: theme.colors.surface },
+                        ]}
                         placeholder="0.00"
                         left={<TextInput.Affix text="$" />}
                       />
@@ -791,9 +808,16 @@ const BudgetScreen = () => {
                     </View>
                   ) : (
                     <View style={styles.overviewStats}>
-                      {/* First Row: Daily and Weekly */}
                       <View style={styles.statRow}>
-                        <View style={styles.statItem}>
+                        <View
+                          style={[
+                            styles.statItem,
+                            {
+                              backgroundColor: theme.colors.surface,
+                              borderColor: theme.colors.border || "#e0e0e0",
+                            },
+                          ]}
+                        >
                           <Text
                             style={[
                               styles.statValue,
@@ -814,7 +838,15 @@ const BudgetScreen = () => {
                             Daily
                           </Text>
                         </View>
-                        <View style={styles.statItem}>
+                        <View
+                          style={[
+                            styles.statItem,
+                            {
+                              backgroundColor: theme.colors.surface,
+                              borderColor: theme.colors.border || "#e0e0e0",
+                            },
+                          ]}
+                        >
                           <Text
                             style={[
                               styles.statValue,
@@ -837,9 +869,16 @@ const BudgetScreen = () => {
                         </View>
                       </View>
 
-                      {/* Second Row: Monthly and Yearly */}
                       <View style={styles.statRow}>
-                        <View style={styles.statItem}>
+                        <View
+                          style={[
+                            styles.statItem,
+                            {
+                              backgroundColor: theme.colors.surface,
+                              borderColor: theme.colors.border || "#e0e0e0",
+                            },
+                          ]}
+                        >
                           <Text
                             style={[
                               styles.statValue,
@@ -860,7 +899,15 @@ const BudgetScreen = () => {
                             Monthly
                           </Text>
                         </View>
-                        <View style={styles.statItem}>
+                        <View
+                          style={[
+                            styles.statItem,
+                            {
+                              backgroundColor: theme.colors.surface,
+                              borderColor: theme.colors.border || "#e0e0e0",
+                            },
+                          ]}
+                        >
                           <Text
                             style={[
                               styles.statValue,
@@ -886,207 +933,60 @@ const BudgetScreen = () => {
                   )}
                 </Card.Content>
               </Card>
+
+              {renderBudgetCard("daily", "Daily Budget", "today")}
+              {renderBudgetCard("weekly", "Weekly Budget", "view-week")}
+              {renderBudgetCard("monthly", "Monthly Budget", "calendar-month")}
+              {renderBudgetCard("yearly", "Yearly Budget", "calendar-month")}
+
+              <Card
+                style={[
+                  styles.tipsCard,
+                  { backgroundColor: theme.colors.surface },
+                ]}
+              >
+                <Card.Content>
+                  <Title
+                    style={[styles.tipsTitle, { color: theme.colors.text }]}
+                  >
+                    Budget Tips
+                  </Title>
+                  <List.Item
+                    title="Set realistic budgets"
+                    description="Start with your current spending and adjust gradually"
+                    left={(props) => (
+                      <List.Icon
+                        {...props}
+                        icon="lightbulb"
+                        color={theme.colors.primary}
+                      />
+                    )}
+                  />
+                  <List.Item
+                    title="Review regularly"
+                    description="Check your progress weekly and adjust as needed"
+                    left={(props) => (
+                      <List.Icon
+                        {...props}
+                        icon="check-circle"
+                        color={theme.colors.primary}
+                      />
+                    )}
+                  />
+                  <List.Item
+                    title="Use categories"
+                    description="Break down your budget by spending categories"
+                    left={(props) => (
+                      <List.Icon
+                        {...props}
+                        icon="format-list-bulleted"
+                        color={theme.colors.primary}
+                      />
+                    )}
+                  />
+                </Card.Content>
+              </Card>
             </View>
-
-            {/* Budget Performance Summary */}
-            <Card
-              style={[
-                styles.summaryCard,
-                { backgroundColor: theme.colors.surface },
-              ]}
-            >
-              <Card.Content>
-                <Title
-                  style={[styles.summaryTitle, { color: theme.colors.text }]}
-                >
-                  📊 Budget Performance Summary
-                </Title>
-                <Text
-                  style={[
-                    styles.summarySubtitle,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  How you're doing compared to previous periods
-                </Text>
-
-                <View style={styles.summaryGrid}>
-                  <View style={styles.summaryItem}>
-                    <Text
-                      style={[
-                        styles.summaryItemTitle,
-                        { color: theme.colors.textSecondary },
-                      ]}
-                    >
-                      Daily Trend
-                    </Text>
-                    <Text
-                      style={[
-                        styles.summaryItemValue,
-                        {
-                          color:
-                            previousSpending.daily > 0
-                              ? currentSpending.daily > previousSpending.daily
-                                ? theme.colors.error
-                                : theme.colors.success
-                              : theme.colors.textSecondary,
-                        },
-                      ]}
-                    >
-                      {previousSpending.daily > 0
-                        ? currentSpending.daily > previousSpending.daily
-                          ? "↗️ Spending Up"
-                          : "↘️ Spending Down"
-                        : "No previous data"}
-                    </Text>
-                  </View>
-
-                  <View style={styles.summaryItem}>
-                    <Text
-                      style={[
-                        styles.summaryItemTitle,
-                        { color: theme.colors.textSecondary },
-                      ]}
-                    >
-                      Weekly Trend
-                    </Text>
-                    <Text
-                      style={[
-                        styles.summaryItemValue,
-                        {
-                          color:
-                            previousSpending.weekly > 0
-                              ? currentSpending.weekly > previousSpending.weekly
-                                ? theme.colors.error
-                                : theme.colors.success
-                              : theme.colors.textSecondary,
-                        },
-                      ]}
-                    >
-                      {previousSpending.weekly > 0
-                        ? currentSpending.weekly > previousSpending.weekly
-                          ? "↗️ Spending Up"
-                          : "↘️ Spending Down"
-                        : "No previous data"}
-                    </Text>
-                  </View>
-
-                  <View style={styles.summaryItem}>
-                    <Text
-                      style={[
-                        styles.summaryItemTitle,
-                        { color: theme.colors.textSecondary },
-                      ]}
-                    >
-                      Monthly Trend
-                    </Text>
-                    <Text
-                      style={[
-                        styles.summaryItemValue,
-                        {
-                          color:
-                            previousSpending.monthly > 0
-                              ? currentSpending.monthly >
-                                previousSpending.monthly
-                                ? theme.colors.error
-                                : theme.colors.success
-                              : theme.colors.textSecondary,
-                        },
-                      ]}
-                    >
-                      {previousSpending.monthly > 0
-                        ? currentSpending.monthly > previousSpending.monthly
-                          ? "↗️ Spending Up"
-                          : "↘️ Spending Down"
-                        : "No previous data"}
-                    </Text>
-                  </View>
-
-                  <View style={styles.summaryItem}>
-                    <Text
-                      style={[
-                        styles.summaryItemTitle,
-                        { color: theme.colors.textSecondary },
-                      ]}
-                    >
-                      Yearly Trend
-                    </Text>
-                    <Text
-                      style={[
-                        styles.summaryItemValue,
-                        {
-                          color:
-                            previousSpending.yearly > 0
-                              ? currentSpending.yearly > previousSpending.yearly
-                                ? theme.colors.error
-                                : theme.colors.success
-                              : theme.colors.textSecondary,
-                        },
-                      ]}
-                    >
-                      {previousSpending.yearly > 0
-                        ? currentSpending.yearly > previousSpending.yearly
-                          ? "↗️ Spending Up"
-                          : "↘️ Spending Down"
-                        : "No previous data"}
-                    </Text>
-                  </View>
-                </View>
-              </Card.Content>
-            </Card>
-
-            {/* Individual Budget Cards */}
-            {renderBudgetCard("daily", "Daily Budget", "today")}
-            {renderBudgetCard("weekly", "Weekly Budget", "view-week")}
-            {renderBudgetCard("monthly", "Monthly Budget", "calendar-month")}
-            {renderBudgetCard("yearly", "Yearly Budget", "event")}
-
-            {/* Budget Tips */}
-            <Card
-              style={[
-                styles.tipsCard,
-                { backgroundColor: theme.colors.surface },
-              ]}
-            >
-              <Card.Content>
-                <Title style={[styles.tipsTitle, { color: theme.colors.text }]}>
-                  Budget Tips
-                </Title>
-                <List.Item
-                  title="Set realistic budgets"
-                  description="Start with your current spending and adjust gradually"
-                  left={(props) => (
-                    <List.Icon
-                      {...props}
-                      icon="lightbulb"
-                      color={theme.colors.primary}
-                    />
-                  )}
-                />
-                <List.Item
-                  title="Review regularly"
-                  description="Check your progress weekly and adjust as needed"
-                  left={(props) => (
-                    <List.Icon
-                      {...props}
-                      icon="check-circle"
-                      color={theme.colors.primary}
-                    />
-                  )}
-                />
-                <List.Item
-                  title="Use categories"
-                  description="Break down your budget by spending categories"
-                  left={(props) => (
-                    <List.Icon
-                      {...props}
-                      icon="format-list-bulleted"
-                      color={theme.colors.primary}
-                    />
-                  )}
-                />
-              </Card.Content>
-            </Card>
           </ScrollView>
         </View>
 
@@ -1112,8 +1012,6 @@ const BudgetScreen = () => {
       </LinearGradient>
     );
   } catch (error) {
-    console.error("BudgetScreen render error:", error);
-    // Fallback render
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>
@@ -1164,6 +1062,26 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 10,
+  },
+  stickyOverviewContainer: {
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 5,
+    backgroundColor: "#f5f5f5",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    zIndex: 1000,
   },
   overviewContainer: {
     paddingHorizontal: 10,
@@ -1219,27 +1137,42 @@ const styles = StyleSheet.create({
   },
   overviewStats: {
     flexDirection: "column",
-    gap: 20,
+    paddingTop: 10,
   },
   statRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: 10,
   },
   statItem: {
     alignItems: "center",
     flex: 1,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 15,
+    marginHorizontal: 6,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    borderWidth: 1,
   },
   statValue: {
     fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 4,
+    marginBottom: 6,
     textAlign: "center",
   },
   statLabel: {
     fontSize: 12,
-    color: "#666",
+    fontWeight: "600",
     textAlign: "center",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
   },
   budgetCard: {
     margin: 10,
@@ -1359,6 +1292,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  statusIndicator: {
+    fontSize: 12,
+    fontWeight: "500",
+    textAlign: "center",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
   tipsCard: {
     margin: 10,
     marginBottom: 20,
@@ -1407,7 +1347,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
-  // Fallback error styles
   errorContainer: {
     flex: 1,
     justifyContent: "center",

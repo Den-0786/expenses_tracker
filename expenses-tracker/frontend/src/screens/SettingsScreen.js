@@ -90,8 +90,8 @@ const SettingsScreen = () => {
   const [pinSetupVisible, setPinSetupVisible] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [confirmPinInput, setConfirmPinInput] = useState("");
-  const [pinStep, setPinStep] = useState("pin"); // "pin" or "confirm"
-  const [localSecurityNotice, setLocalSecurityNotice] = useState(true); // Enable by default
+  const [pinStep, setPinStep] = useState("pin");
+  const [localSecurityNotice, setLocalSecurityNotice] = useState(true);
 
   useEffect(() => {
     loadSettings();
@@ -100,22 +100,17 @@ const SettingsScreen = () => {
   }, []);
 
   useEffect(() => {
-    // Sync local state with context state
     if (showSecurityNotice !== undefined) {
       setLocalSecurityNotice(showSecurityNotice);
     }
   }, [showSecurityNotice]);
 
-  // Initialize security notice on mount
   useEffect(() => {
     if (showSecurityNotice === undefined) {
-      console.log("Security notice undefined, resetting to default");
       resetToDefault();
     } else if (showSecurityNotice === false) {
-      console.log("Security notice is false, ensuring it's enabled");
       ensureEnabled();
     } else {
-      console.log("Security notice initialized with:", showSecurityNotice);
       setLocalSecurityNotice(showSecurityNotice);
     }
   }, []);
@@ -144,7 +139,6 @@ const SettingsScreen = () => {
         });
       }
     } catch (error) {
-      console.error("Error loading settings:", error);
       showSnackbar("Failed to load settings", "error");
     } finally {
       setIsLoading(false);
@@ -155,9 +149,7 @@ const SettingsScreen = () => {
     try {
       const usage = await getDataUsage();
       setDataUsage(usage);
-    } catch (error) {
-      console.error("Error loading data usage:", error);
-    }
+    } catch (error) {}
   };
 
   const loadDataRetention = async () => {
@@ -166,35 +158,27 @@ const SettingsScreen = () => {
       if (retention) {
         setDataRetentionDays(parseInt(retention));
       }
-    } catch (error) {
-      console.error("Error loading data retention:", error);
-    }
+    } catch (error) {}
   };
 
   const saveDataRetention = async (days) => {
     try {
       await AsyncStorage.setItem("dataRetentionDays", days.toString());
       setDataRetentionDays(days);
-    } catch (error) {
-      console.error("Error saving data retention:", error);
-    }
+    } catch (error) {}
   };
 
   const handleSecurityToggle = async (enabled) => {
     if (enabled) {
-      // User is enabling security - show method selection
       showSnackbar("Choose security method: Set PIN or Use Biometric", "info");
-      // For now, default to PIN setup since we can't show multiple options in toast
       const result = await toggleSecurity(true, "pin");
       if (result === "pin") {
-        // Show PIN setup modal
         setPinStep("pin");
         setPinInput("");
         setConfirmPinInput("");
         setPinSetupVisible(true);
       }
     } else {
-      // User is disabling security
       showSnackbar(
         "Security will be disabled. You can re-enable it anytime.",
         "info"
@@ -206,14 +190,12 @@ const SettingsScreen = () => {
 
   const handlePinSetup = async () => {
     if (pinStep === "pin") {
-      // First step: validate PIN and move to confirmation
       if (pinInput.length < 4) {
         showSnackbar("PIN must be at least 4 digits", "error");
         return;
       }
       setPinStep("confirm");
     } else {
-      // Second step: confirm PIN
       if (pinInput !== confirmPinInput) {
         showSnackbar("PINs do not match. Please try again.", "error");
         setConfirmPinInput("");
@@ -239,13 +221,11 @@ const SettingsScreen = () => {
 
   const handlePinManagement = () => {
     if (pin) {
-      // Change existing PIN
       setPinStep("pin");
       setPinInput("");
       setConfirmPinInput("");
       setPinSetupVisible(true);
     } else {
-      // Set new PIN
       setPinStep("pin");
       setPinInput("");
       setConfirmPinInput("");
@@ -254,13 +234,7 @@ const SettingsScreen = () => {
   };
 
   const handleSecurityNoticeToggle = async (enabled) => {
-    console.log("Toggling security notice to:", enabled);
-    console.log("Current showSecurityNotice from context:", showSecurityNotice);
-    console.log("Current localSecurityNotice:", localSecurityNotice);
-
-    // Always keep security notice enabled for now
     if (!enabled) {
-      console.log("Security notice cannot be disabled, keeping it enabled");
       showSnackbar(
         "Security notice must remain enabled for your safety",
         "info"
@@ -271,11 +245,7 @@ const SettingsScreen = () => {
     setLocalSecurityNotice(enabled);
     try {
       await updateSecurityNoticeSetting(enabled);
-      console.log("Security notice setting updated successfully");
-      console.log("New showSecurityNotice from context:", showSecurityNotice);
     } catch (error) {
-      console.error("Error updating security notice setting:", error);
-      // Revert local state if update failed
       setLocalSecurityNotice(!enabled);
       showSnackbar("Failed to update security notice setting", "error");
       return;
@@ -341,7 +311,6 @@ const SettingsScreen = () => {
       setEditMode(false);
       showSnackbar("Settings updated successfully!", "success");
     } catch (error) {
-      console.error("Error saving settings:", error);
       showSnackbar("Failed to save settings. Please try again.", "error");
     }
   };
@@ -350,9 +319,8 @@ const SettingsScreen = () => {
     try {
       await clearOldData(dataRetentionDays);
       showSnackbar("Old data cleared successfully!", "success");
-      loadDataUsage(); // Refresh data usage after clearing
+      loadDataUsage();
     } catch (error) {
-      console.error("Error clearing data:", error);
       showSnackbar("Failed to clear old data. Please try again.", "error");
     }
   };
@@ -360,11 +328,8 @@ const SettingsScreen = () => {
   const handleExportData = async () => {
     try {
       const data = await exportData();
-      // In a real app, you would save this to a file or share it
-      console.log("Data exported:", data);
       showSnackbar("Data exported successfully!", "success");
     } catch (error) {
-      console.error("Error exporting data:", error);
       showSnackbar("Failed to export data. Please try again.", "error");
     }
   };
@@ -372,27 +337,18 @@ const SettingsScreen = () => {
   const handleBackupData = async () => {
     try {
       const data = await backupData();
-      // In a real app, you would save this to cloud storage
-      console.log("Data backed up:", data);
       showSnackbar("Data backed up successfully!", "success");
     } catch (error) {
-      console.error("Error backing up data:", error);
       showSnackbar("Failed to backup data. Please try again.", "error");
     }
   };
 
   const handleResetApp = async () => {
     try {
-      // Clear all data from database
-      await clearOldData(0); // 0 days = clear everything
-
-      // Clear all security settings
+      await clearOldData(0);
       await resetSecurity();
-
-      // Clear all notification settings
       await cancelAllNotifications();
 
-      // Clear all user settings
       await AsyncStorage.removeItem("user");
       await AsyncStorage.removeItem("userPin");
       await AsyncStorage.removeItem("onboardingCompleted");
@@ -403,12 +359,10 @@ const SettingsScreen = () => {
 
       showSnackbar("App reset complete! Please restart the app.", "success");
 
-      // Navigate to SignUp after a short delay
       setTimeout(() => {
         navigation.replace("SignUp");
       }, 2000);
     } catch (error) {
-      console.error("Error resetting app:", error);
       showSnackbar("Failed to reset app. Please try again.", "error");
     }
   };
@@ -417,8 +371,6 @@ const SettingsScreen = () => {
     try {
       await signOut();
       showSnackbar("Signed out successfully", "success");
-      // Navigate to SignIn page after sign out (user already has account)
-      // Reset the entire navigation stack to prevent back navigation
       navigation.reset({
         index: 0,
         routes: [{ name: "SignIn" }],
@@ -453,7 +405,6 @@ const SettingsScreen = () => {
 
   return (
     <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
-      {/* Sticky Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
         <Text style={styles.headerSubtitle}>
@@ -461,19 +412,31 @@ const SettingsScreen = () => {
         </Text>
       </View>
 
-      {/* Main Content Container - Gray Parent Card */}
-      <View style={styles.contentContainer}>
+      <View
+        style={[
+          styles.contentContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
         >
-          {/* Setup Account Button */}
-          <Card style={styles.setupCard}>
+          <Card style={styles.card}>
             <Card.Content>
               <View style={styles.setupHeader}>
                 <View style={styles.setupInfo}>
-                  <Title style={styles.setupTitle}>Account Setup</Title>
-                  <Text style={styles.setupSubtitle}>
+                  <Title
+                    style={[styles.setupTitle, { color: theme.colors.text }]}
+                  >
+                    Account Setup
+                  </Title>
+                  <Text
+                    style={[
+                      styles.setupSubtitle,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
                     Configure your payment frequency, amount, and tithing
                     preferences
                   </Text>
@@ -491,11 +454,12 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* Payment Settings */}
           <Card style={styles.card}>
             <Card.Content>
               <View style={styles.cardHeader}>
-                <Title style={styles.cardTitle}>Payment Settings</Title>
+                <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                  Payment Settings
+                </Title>
                 <Button
                   mode={editMode ? "contained" : "outlined"}
                   onPress={() => setEditMode(!editMode)}
@@ -634,7 +598,9 @@ const SettingsScreen = () => {
                     description={getFrequencyLabel(
                       userSettings?.payment_frequency
                     )}
-                    left={(props) => <List.Icon {...props} icon="event" />}
+                    left={(props) => (
+                      <List.Icon {...props} icon="calendar-month" />
+                    )}
                   />
                   <Divider style={styles.itemDivider} />
                   <List.Item
@@ -653,10 +619,11 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* Notifications */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>Notifications</Title>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                Notifications
+              </Title>
               <List.Item
                 title="Daily Reminders"
                 left={(props) => <List.Icon {...props} icon="bell" />}
@@ -701,10 +668,11 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* Data Management */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>Data Management</Title>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                Data Management
+              </Title>
 
               <List.Item
                 title="Data Retention"
@@ -713,7 +681,14 @@ const SettingsScreen = () => {
               />
 
               <View style={styles.retentionSlider}>
-                <Text style={styles.retentionLabel}>Days to keep data:</Text>
+                <Text
+                  style={[
+                    styles.retentionLabel,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  Days to keep data:
+                </Text>
                 <View style={styles.retentionButtons}>
                   {[30, 90, 180, 365].map((days) => (
                     <Button
@@ -779,10 +754,11 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* Account Settings */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>Account Settings</Title>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                Account Settings
+              </Title>
               <List.Item
                 title="Username"
                 description={user?.username || "Not set"}
@@ -829,10 +805,11 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* App Preferences */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>App Preferences</Title>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                App Preferences
+              </Title>
               <List.Item
                 title="Default Currency"
                 left={(props) => <List.Icon {...props} icon="currency-usd" />}
@@ -900,12 +877,12 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* Security & Privacy */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>Security & Privacy</Title>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                Security & Privacy
+              </Title>
 
-              {/* Master Security Toggle */}
               <List.Item
                 title="App Security"
                 description={isSecurityEnabled ? "Enabled" : "Disabled"}
@@ -926,7 +903,6 @@ const SettingsScreen = () => {
               />
               <Divider style={styles.itemDivider} />
 
-              {/* Security Notice Toggle */}
               <List.Item
                 title="Show Security Notice"
                 left={(props) => (
@@ -945,7 +921,6 @@ const SettingsScreen = () => {
                 )}
               />
 
-              {/* Security Notice Reset Button */}
               <View style={styles.securityNoticeResetContainer}>
                 <Button
                   mode="outlined"
@@ -959,10 +934,8 @@ const SettingsScreen = () => {
                 </Button>
               </View>
 
-              {/* Security Method Selection (only show when security is enabled) */}
               {isSecurityEnabled && (
                 <>
-                  {/* PIN Management */}
                   <List.Item
                     title="PIN Lock"
                     left={(props) => (
@@ -986,7 +959,6 @@ const SettingsScreen = () => {
                   />
                   <Divider style={styles.itemDivider} />
 
-                  {/* Biometric Authentication */}
                   {isBiometricAvailable && (
                     <List.Item
                       title="Biometric Lock"
@@ -1010,7 +982,6 @@ const SettingsScreen = () => {
                     <Divider style={styles.itemDivider} />
                   )}
 
-                  {/* Auto Lock */}
                   <List.Item
                     title="Auto Lock"
                     description={`Lock app after ${autoLockTimeout} minutes of inactivity`}
@@ -1056,7 +1027,6 @@ const SettingsScreen = () => {
                   )}
                   <Divider style={styles.itemDivider} />
 
-                  {/* Lock App Now */}
                   <List.Item
                     title="Lock App Now"
                     description="Immediately lock the app"
@@ -1081,7 +1051,6 @@ const SettingsScreen = () => {
                   />
                   <Divider style={styles.itemDivider} />
 
-                  {/* Reset Security */}
                   <List.Item
                     title="Reset Security"
                     left={(props) => (
@@ -1136,10 +1105,9 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* Categories & Payment Methods */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
                 Categories & Payment Methods
               </Title>
               <List.Item
@@ -1166,10 +1134,11 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* Help & Support */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>Help & Support</Title>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                Help & Support
+              </Title>
               <List.Item
                 title="Help Center"
                 left={(props) => <List.Icon {...props} icon="help-circle" />}
@@ -1212,10 +1181,11 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* App Info */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>App Information</Title>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                App Information
+              </Title>
               <List.Item
                 title="Version"
                 description={Constants.expoConfig?.version || "1.0.0"}
@@ -1238,10 +1208,11 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* App Reset */}
           <Card style={styles.card}>
             <Card.Content>
-              <Title style={styles.cardTitle}>App Reset</Title>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                App Reset
+              </Title>
               <Text style={styles.warningText}>
                 Warning: This will delete all your data and reset the app to its
                 initial state.
@@ -1267,7 +1238,6 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* PIN Setup Modal */}
           <Portal>
             <Modal
               visible={pinSetupVisible}
@@ -1505,7 +1475,6 @@ const styles = StyleSheet.create({
   themeButton: {
     minWidth: 50,
   },
-  // Setup card styles
   setupCard: {
     margin: 10,
     marginTop: 5,
@@ -1534,7 +1503,6 @@ const styles = StyleSheet.create({
     color: "#666",
     lineHeight: 20,
   },
-  // Modal styles
   modalContainer: {
     flex: 1,
     justifyContent: "center",

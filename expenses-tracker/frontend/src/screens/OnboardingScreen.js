@@ -43,7 +43,6 @@ const OnboardingScreen = () => {
     useSecurityNotice();
   const { completeOnboarding, isAuthenticated } = useAuth();
 
-  // Redirect to sign in if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       navigation.replace("SignIn");
@@ -78,9 +77,7 @@ const OnboardingScreen = () => {
       if (settings && !navigation.isFocused() && !navigation.canGoBack()) {
         navigation.replace("MainTabs");
       }
-    } catch (error) {
-      // Silently handle error
-    }
+    } catch (error) {}
   };
 
   useEffect(() => {
@@ -212,7 +209,6 @@ const OnboardingScreen = () => {
     setSnackbarVisible(false);
   };
 
-  // Show setup form
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -221,7 +217,6 @@ const OnboardingScreen = () => {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        {/* Header with ET branding */}
         <View style={styles.header}>
           <View style={styles.headerBrand}>
             <View style={styles.headerLogoCircle}>
@@ -245,16 +240,13 @@ const OnboardingScreen = () => {
           </View>
         </View>
 
-        {/* PIN Setup Modal - Positioned at top for visibility */}
         {showPinSetup && (
           <>
-            {/* Background overlay for better visibility */}
             <View style={styles.pinSetupBackground} />
             <View style={styles.pinSetupOverlay}>
               <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <Card style={styles.pinSetupCard}>
                   <Card.Content>
-                    {/* Close button in top right corner */}
                     <TouchableOpacity
                       style={styles.pinCloseButton}
                       onPress={handleClosePinSetup}
@@ -318,9 +310,7 @@ const OnboardingScreen = () => {
           </>
         )}
 
-        {/* Setup Form */}
         <View style={styles.formContainer}>
-          {/* Security Notice */}
           {!isSecurityEnabled && showSecurityNotice && (
             <Card
               style={[
@@ -431,7 +421,6 @@ const OnboardingScreen = () => {
                   </View>
                 </View>
 
-                {/* Add Expenses Button */}
                 <View
                   style={[
                     styles.addExpensesContainer,
@@ -663,7 +652,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Setup form styles
   backgroundGradient: {
     flex: 1,
   },
@@ -842,7 +830,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
-  // Security notice styles
   securityCard: {
     marginBottom: 20,
     elevation: 4,
@@ -880,7 +867,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     textAlign: "center",
   },
-  // PIN Setup styles
   pinSetupBackground: {
     position: "absolute",
     top: 0,
@@ -905,7 +891,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    transform: [{ scale: 1.02 }], // Slightly larger for prominence
+    transform: [{ scale: 1.02 }],
   },
   pinCloseButton: {
     position: "absolute",
@@ -929,7 +915,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 8,
     textAlign: "center",
-    marginTop: 8, // Add some top margin to account for close button
+    marginTop: 8,
   },
   pinSetupSubtitle: {
     fontSize: 14,

@@ -1,294 +1,257 @@
 const express = require("express");
 const { PrismaClient } = require("@prisma/client");
+const { authenticateToken } = require("../middleware/auth");
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get dashboard overview
-router.get("/overview", async (req, res) => {
+router.get("/overview", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
+
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    const [monthlyExpenses, monthlyIncome, totalExpenses, totalIncome] =
+      await Promise.all([
+        prisma.expense.aggregate({
+          where: {
+            userId,
+            date: {
+              gte: startOfMonth,
+              lte: endOfMonth,
+            },
+          },
+          _sum: { amount: true },
+        }),
+        prisma.income.aggregate({
+          where: {
+            userId,
+            date: {
+              gte: startOfMonth,
+              lte: endOfMonth,
+            },
+          },
+          _sum: { amount: true },
+        }),
+        prisma.expense.aggregate({
+          where: { userId },
+          _sum: { amount: true },
+        }),
+        prisma.income.aggregate({
+          where: { userId },
+          _sum: { amount: true },
+        }),
+      ]);
+
+    const monthlyExpenseTotal = monthlyExpenses._sum.amount || 0;
+    const monthlyIncomeTotal = monthlyIncome._sum.amount || 0;
+    const totalExpenseAmount = totalExpenses._sum.amount || 0;
+    const totalIncomeAmount = totalIncome._sum.amount || 0;
+
+    const balance = monthlyIncomeTotal - monthlyExpenseTotal;
+    const totalBalance = totalIncomeAmount - totalExpenseAmount;
+
+    const recentExpenses = await prisma.expense.findMany({
+      where: { userId },
+      include: {
+        category: true,
+      },
+      orderBy: {
+        date: "desc",
+      },
+      take: 5,
+    });
+
+    const recentIncome = await prisma.income.findMany({
+      where: { userId },
+      include: {
+        category: true,
+      },
+      orderBy: {
+        date: "desc",
+      },
+      take: 5,
+    });
+
+    res.json({
+      success: true,
+      overview: {
+        monthly: {
+          expenses: monthlyExpenseTotal,
+          income: monthlyIncomeTotal,
+          balance,
+        },
+        total: {
+          expenses: totalExpenseAmount,
+          income: totalIncomeAmount,
+          balance: totalBalance,
+        },
+        recent: {
+          expenses: recentExpenses,
+          income: recentIncome,
+        },
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Internal server error",
+      message: "Failed to get dashboard overview",
+    });
+  }
+});
+
+router.get("/analytics", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
     const { period = "month" } = req.query;
 
-    const now = new Date();
     let startDate, endDate;
+    const today = new Date();
 
-    // Calculate date range based on period
     switch (period) {
-      case "today":
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-        break;
       case "week":
-        const dayOfWeek = now.getDay();
-        const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-        startDate = new Date(now.getFullYear(), now.getMonth(), diff);
-        endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        startDate = startOfWeek;
+        endDate = today;
         break;
       case "month":
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = today;
         break;
       case "year":
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
+        startDate = new Date(today.getFullYear(), 0, 1);
+        endDate = today;
         break;
       default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = today;
     }
 
-    // Get expenses for the period
     const expenses = await prisma.expense.findMany({
       where: {
         userId,
         date: {
           gte: startDate,
-          lte: endDate
-        }
-      }
+          lte: endDate,
+        },
+      },
+      include: {
+        category: true,
+      },
     });
 
-    // Get income for the period
     const income = await prisma.income.findMany({
       where: {
         userId,
         date: {
           gte: startDate,
-          lte: endDate
-        }
-      }
-    });
-
-    // Calculate totals
-    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const totalIncome = income.reduce((sum, inc) => sum + inc.amount, 0);
-    const netAmount = totalIncome - totalExpenses;
-
-    // Get budget for the period
-    const budget = await prisma.budget.findFirst({
-      where: {
-        userId,
-        period,
-        startDate: { lte: startDate },
-        endDate: { gte: endDate }
-      }
-    });
-
-    // Get recent transactions
-    const recentTransactions = await prisma.expense.findMany({
-      where: { userId },
-      orderBy: { date: "desc" },
-      take: 5,
+          lte: endDate,
+        },
+      },
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
-    // Get category breakdown
-    const categoryBreakdown = await prisma.expense.groupBy({
-      by: ["categoryId"],
-      where: {
-        userId,
-        date: {
-          gte: startDate,
-          lte: endDate
-        }
-      },
-      _sum: {
-        amount: true
-      },
-      _count: true
+    const expenseByCategory = {};
+    const incomeByCategory = {};
+
+    expenses.forEach((expense) => {
+      const categoryName = expense.category?.name || "Uncategorized";
+      expenseByCategory[categoryName] =
+        (expenseByCategory[categoryName] || 0) + expense.amount;
     });
 
-    // Get daily spending trend (last 7 days)
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const dailyTrend = await prisma.expense.groupBy({
-      by: ["date"],
-      where: {
-        userId,
-        date: {
-          gte: sevenDaysAgo,
-          lte: now
-        }
-      },
-      _sum: {
-        amount: true
-      }
+    income.forEach((inc) => {
+      const categoryName = inc.category?.name || "Uncategorized";
+      incomeByCategory[categoryName] =
+        (incomeByCategory[categoryName] || 0) + inc.amount;
     });
+
+    const totalExpenses = expenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0
+    );
+    const totalIncome = income.reduce((sum, inc) => sum + inc.amount, 0);
 
     res.json({
       success: true,
-      period,
-      dateRange: {
-        start: startDate,
-        end: endDate
-      },
-      overview: {
+      analytics: {
+        period,
+        startDate,
+        endDate,
         totalExpenses,
         totalIncome,
-        netAmount,
-        budgetAmount: budget?.amount || 0,
-        remainingBudget: budget ? budget.amount - totalExpenses : 0
+        balance: totalIncome - totalExpenses,
+        expenseByCategory,
+        incomeByCategory,
+        expenseCount: expenses.length,
+        incomeCount: income.length,
       },
-      recentTransactions,
-      categoryBreakdown,
-      dailyTrend,
-      periodDays: Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))
     });
-
   } catch (error) {
-    console.error("Get dashboard overview error:", error);
     res.status(500).json({
       error: "Internal server error",
-      message: "Failed to get dashboard overview"
+      message: "Failed to get spending analytics",
     });
   }
 });
 
-// Get spending analytics
-router.get("/analytics", async (req, res) => {
+router.get("/budget-comparison", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
-    const { period = "month" } = req.query;
+    const userId = req.user.id;
 
-    const now = new Date();
-    let startDate, endDate;
+    const budgets = await prisma.budget.findMany({
+      where: { userId },
+    });
 
-    // Calculate date range
-    switch (period) {
-      case "week":
-        const dayOfWeek = now.getDay();
-        const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-        startDate = new Date(now.getFullYear(), now.getMonth(), diff);
-        endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-        break;
-      case "month":
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case "year":
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
-        break;
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    }
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    // Get expenses with categories
-    const expenses = await prisma.expense.findMany({
+    const monthlyExpenses = await prisma.expense.aggregate({
       where: {
         userId,
         date: {
-          gte: startDate,
-          lte: endDate
-        }
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
       },
-      include: {
-        category: true
+      _sum: { amount: true },
+    });
+
+    const monthlyExpenseTotal = monthlyExpenses._sum.amount || 0;
+
+    const budgetComparison = budgets.map((budget) => {
+      let spent = 0;
+      let remaining = budget.amount;
+
+      if (budget.period === "monthly") {
+        spent = monthlyExpenseTotal;
+        remaining = Math.max(0, budget.amount - spent);
       }
-    });
 
-    // Calculate analytics
-    const totalSpending = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const averageSpending = expenses.length > 0 ? totalSpending / expenses.length : 0;
-    
-    // Top spending categories
-    const categorySpending = {};
-    expenses.forEach(expense => {
-      const categoryName = expense.category?.name || "Uncategorized";
-      categorySpending[categoryName] = (categorySpending[categoryName] || 0) + expense.amount;
-    });
-
-    const topCategories = Object.entries(categorySpending)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 5)
-      .map(([name, amount]) => ({ name, amount }));
-
-    // Spending by day of week
-    const dayOfWeekSpending = {};
-    expenses.forEach(expense => {
-      const day = new Date(expense.date).toLocaleDateString('en-US', { weekday: 'long' });
-      dayOfWeekSpending[day] = (dayOfWeekSpending[day] || 0) + expense.amount;
+      return {
+        id: budget.id,
+        period: budget.period,
+        budget: budget.amount,
+        spent,
+        remaining,
+        percentageUsed: budget.amount > 0 ? (spent / budget.amount) * 100 : 0,
+      };
     });
 
     res.json({
       success: true,
-      period,
-      analytics: {
-        totalSpending,
-        averageSpending,
-        totalTransactions: expenses.length,
-        topCategories,
-        dayOfWeekSpending
-      }
+      budgetComparison,
     });
-
   } catch (error) {
-    console.error("Get spending analytics error:", error);
     res.status(500).json({
       error: "Internal server error",
-      message: "Failed to get spending analytics"
-    });
-  }
-});
-
-// Get budget vs actual comparison
-router.get("/budget-comparison", async (req, res) => {
-  try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
-
-    const now = new Date();
-    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    // Get current month budget
-    const budget = await prisma.budget.findFirst({
-      where: {
-        userId,
-        period: "monthly",
-        startDate: { lte: currentMonth },
-        endDate: { gte: nextMonth }
-      }
-    });
-
-    // Get current month expenses
-    const expenses = await prisma.expense.findMany({
-      where: {
-        userId,
-        date: {
-          gte: currentMonth,
-          lte: nextMonth
-        }
-      }
-    });
-
-    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const budgetAmount = budget?.amount || 0;
-    const remainingBudget = budgetAmount - totalExpenses;
-    const spendingPercentage = budgetAmount > 0 ? (totalExpenses / budgetAmount) * 100 : 0;
-
-    res.json({
-      success: true,
-      period: "current_month",
-      budget: {
-        amount: budgetAmount,
-        spent: totalExpenses,
-        remaining: remainingBudget,
-        percentage: Math.round(spendingPercentage * 100) / 100
-      },
-      status: remainingBudget >= 0 ? "under_budget" : "over_budget"
-    });
-
-  } catch (error) {
-    console.error("Get budget comparison error:", error);
-    res.status(500).json({
-      error: "Internal server error",
-      message: "Failed to get budget comparison"
+      message: "Failed to get budget comparison",
     });
   }
 });

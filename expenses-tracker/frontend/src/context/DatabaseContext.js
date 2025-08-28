@@ -702,7 +702,14 @@ export const DatabaseProvider = ({ children }) => {
 
       if (db.mock) {
         console.log("Mock: Deleting expense", { id });
-        resolve({ rowsAffected: 1 });
+        // Remove the expense from mock data
+        const initialLength = db.mockData.expenses.length;
+        db.mockData.expenses = db.mockData.expenses.filter(
+          (expense) => expense.id !== id
+        );
+        const finalLength = db.mockData.expenses.length;
+        console.log(`Mock: Removed ${initialLength - finalLength} expense(s)`);
+        resolve({ rowsAffected: initialLength - finalLength });
         return;
       }
 

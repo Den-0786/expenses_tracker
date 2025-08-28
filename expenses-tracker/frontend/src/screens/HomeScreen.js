@@ -13,9 +13,6 @@ import {
   Title,
   Paragraph,
   Button,
-  FAB,
-  Portal,
-  Modal,
   TextInput,
   Snackbar,
 } from "react-native-paper";
@@ -42,7 +39,6 @@ const HomeScreen = () => {
     getUserSettings,
     getExpensesByDate,
     getExpensesByDateRange,
-    addExpense,
     getAllBudgets,
   } = useDatabase();
   const { sendImmediateNotification } = useNotifications();
@@ -55,23 +51,31 @@ const HomeScreen = () => {
     yearly: 0,
   });
 
+  const [currentSpending, setCurrentSpending] = useState({
+    daily: 0,
+    weekly: 0,
+    monthly: 0,
+    yearly: 0,
+  });
+
+  const [previousSpending, setPreviousSpending] = useState({
+    daily: 0,
+    weekly: 0,
+    monthly: 0,
+    yearly: 0,
+  });
+
   const [userSettings, setUserSettings] = useState(null);
   const [todayExpenses, setTodayExpenses] = useState([]);
   const [weeklyExpenses, setWeeklyExpenses] = useState([]);
   const [monthlyExpenses, setMonthlyExpenses] = useState([]);
   const [yearlyExpenses, setYearlyExpenses] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [addExpenseVisible, setAddExpenseVisible] = useState(false);
-  const [newExpense, setNewExpense] = useState({
-    amount: "",
-    description: "",
-    category: "",
-    paymentMethod: "Cash",
-  });
+
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarType, setSnackbarType] = useState("success");
-  const [activeTab, setActiveTab] = useState("daily"); // daily, weekly, monthly, yearly
+  const [activeTab, setActiveTab] = useState("daily");
 
   useEffect(() => {
     loadData();
@@ -82,7 +86,6 @@ const HomeScreen = () => {
       const settings = await getUserSettings();
       setUserSettings(settings);
 
-      // Load budgets
       const savedBudgets = await getAllBudgets();
       setBudgets(savedBudgets);
 
@@ -90,7 +93,6 @@ const HomeScreen = () => {
       const todayExp = await getExpensesByDate(today);
       setTodayExpenses(todayExp);
 
-      // Weekly expenses
       const weekStart = format(
         startOfWeek(new Date(), { weekStartsOn: 1 }),
         "yyyy-MM-dd"
@@ -99,35 +101,154 @@ const HomeScreen = () => {
         endOfWeek(new Date(), { weekStartsOn: 1 }),
         "yyyy-MM-dd"
       );
+
+      await calculateCurrentSpending();
       const weekExp = await getExpensesByDateRange(weekStart, weekEnd);
       setWeeklyExpenses(weekExp);
 
-      // Monthly expenses
       const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
       const monthEnd = format(endOfMonth(new Date()), "yyyy-MM-dd");
       const monthExp = await getExpensesByDateRange(monthStart, monthEnd);
       setMonthlyExpenses(monthExp);
 
-      // Yearly expenses
       const yearStart = format(
-        new Date(new Date().getFullYear(), 0, 1), // January 1st
+        new Date(new Date().getFullYear(), 0, 1),
         "yyyy-MM-dd"
       );
       const yearEnd = format(
-        new Date(new Date().getFullYear(), 11, 0), // December 31st (day 0 of next month = last day of current month)
+        new Date(new Date().getFullYear(), 11, 0),
         "yyyy-MM-dd"
       );
       const yearExp = await getExpensesByDateRange(yearStart, yearEnd);
       setYearlyExpenses(yearExp);
-    } catch (error) {
-      // Silently handle error
-    }
+    } catch (error) {}
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
+  };
+
+  const calculateCurrentSpending = async () => {
+    try {
+      const now = new Date();
+
+      const today = now.toISOString().split("T")[0];
+      const todayExpenses = await getExpensesByDateRange(today, today);
+      const dailyTotal = todayExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
+      const yesterdayExpenses = await getExpensesByDateRange(
+        yesterdayStr,
+        yesterdayStr
+      );
+      const previousDailyTotal = yesterdayExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay() + 1);
+      const weekStartStr = weekStart.toISOString().split("T")[0];
+      const weekEnd = new Date(now);
+      weekEnd.setDate(now.getDate() + (7 - now.getDay()));
+      const weekEndStr = weekEnd.toISOString().split("T")[0];
+      const weekExpenses = await getExpensesByDateRange(
+        weekStartStr,
+        weekEndStr
+      );
+      const weeklyTotal = weekExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      const prevWeekStart = new Date(weekStart);
+      prevWeekStart.setDate(weekStart.getDate() - 7);
+      const prevWeekStartStr = prevWeekStart.toISOString().split("T")[0];
+      const prevWeekEnd = new Date(weekEnd);
+      prevWeekEnd.setDate(weekEnd.getDate() - 7);
+      const prevWeekEndStr = prevWeekEnd.toISOString().split("T")[0];
+      const prevWeekExpenses = await getExpensesByDateRange(
+        prevWeekStartStr,
+        prevWeekEndStr
+      );
+      const previousWeeklyTotal = prevWeekExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthStartStr = monthStart.toISOString().split("T")[0];
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const monthEndStr = monthEnd.toISOString().split("T")[0];
+      const monthExpenses = await getExpensesByDateRange(
+        monthStartStr,
+        monthEndStr
+      );
+      const monthlyTotal = monthExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prevMonthStartStr = prevMonthStart.toISOString().split("T")[0];
+      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      const prevMonthEndStr = prevMonthEnd.toISOString().split("T")[0];
+      const prevMonthExpenses = await getExpensesByDateRange(
+        prevMonthStartStr,
+        prevMonthEndStr
+      );
+      const previousMonthlyTotal = prevMonthExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const yearStartStr = yearStart.toISOString().split("T")[0];
+      const yearEnd = new Date(now.getFullYear(), 11, 31);
+      const yearEndStr = yearEnd.toISOString().split("T")[0];
+      const yearExpenses = await getExpensesByDateRange(
+        yearStartStr,
+        yearEndStr
+      );
+      const yearlyTotal = yearExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      const prevYearStart = new Date(now.getFullYear() - 1, 0, 1);
+      const prevYearStartStr = prevYearStart.toISOString().split("T")[0];
+      const prevYearEnd = new Date(now.getFullYear() - 1, 11, 31);
+      const prevYearEndStr = prevYearEnd.toISOString().split("T")[0];
+      const prevYearExpenses = await getExpensesByDateRange(
+        prevYearStartStr,
+        prevYearEndStr
+      );
+      const previousYearlyTotal = prevYearExpenses.reduce(
+        (sum, exp) => sum + exp.amount,
+        0
+      );
+
+      setCurrentSpending({
+        daily: dailyTotal,
+        weekly: weeklyTotal,
+        monthly: monthlyTotal,
+        yearly: yearlyTotal,
+      });
+
+      setPreviousSpending({
+        daily: previousDailyTotal,
+        weekly: previousWeeklyTotal,
+        monthly: previousMonthlyTotal,
+        yearly: previousYearlyTotal,
+      });
+    } catch (error) {}
   };
 
   const calculateTotal = (expenses) => {
@@ -153,42 +274,6 @@ const HomeScreen = () => {
     setSnackbarVisible(false);
   };
 
-  const handleAddExpense = async () => {
-    if (!newExpense.amount || !newExpense.description) {
-      showSnackbar("Please fill in all required fields.", "error");
-      return;
-    }
-
-    try {
-      await addExpense(
-        parseFloat(newExpense.amount),
-        newExpense.description,
-        newExpense.category || "General",
-        format(new Date(), "yyyy-MM-dd"),
-        newExpense.paymentMethod
-      );
-
-      setNewExpense({
-        amount: "",
-        description: "",
-        category: "",
-        paymentMethod: "Cash",
-      });
-      setAddExpenseVisible(false);
-      await loadData();
-
-      // Send notification
-      await sendImmediateNotification(
-        "Expense Added",
-        `Added ${newExpense.description} for $${newExpense.amount}`
-      );
-
-      showSnackbar("Expense added successfully!", "success");
-    } catch (error) {
-      showSnackbar("Failed to add expense. Please try again.", "error");
-    }
-  };
-
   const getCategoryIcon = (category) => {
     const icons = {
       Food: "restaurant",
@@ -202,7 +287,6 @@ const HomeScreen = () => {
     return icons[category] || "attach-money";
   };
 
-  // Helper functions to get current data based on active tab
   const getCurrentExpenses = () => {
     switch (activeTab) {
       case "daily":
@@ -249,7 +333,6 @@ const HomeScreen = () => {
     }
   };
 
-  // Helper function to check if a year is a leap year
   const isLeapYear = (year) => {
     return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   };
@@ -265,11 +348,8 @@ const HomeScreen = () => {
       case "weekly":
         return 7;
       case "monthly":
-        // Get the actual number of days in the current month
-        // This handles months with 28, 29, 30, or 31 days automatically
         return new Date(currentYear, currentMonth + 1, 0).getDate();
       case "yearly":
-        // Return 365 for regular years, 366 for leap years
         return isLeapYear(currentYear) ? 366 : 365;
       default:
         return 1;
@@ -296,7 +376,6 @@ const HomeScreen = () => {
     return Math.max(budgets[period] - getCurrentExpensesTotal(), 0);
   };
 
-  // Chart data preparation functions
   const preparePieChartData = (expenses) => {
     const categoryTotals = {};
 
@@ -349,7 +428,6 @@ const HomeScreen = () => {
 
   return (
     <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
-      {/* Sticky Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Dashboard</Text>
         <Text style={styles.headerSubtitle}>
@@ -357,8 +435,12 @@ const HomeScreen = () => {
         </Text>
       </View>
 
-      {/* Main Content Container - Gray Parent Card */}
-      <View style={styles.contentContainer}>
+      <View
+        style={[
+          styles.contentContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
         <ScrollView
           style={styles.scrollView}
           refreshControl={
@@ -366,13 +448,26 @@ const HomeScreen = () => {
           }
           showsVerticalScrollIndicator={false}
         >
-          {/* Setup Account Button */}
-          <Card style={styles.setupCard}>
+          <Card
+            style={[
+              styles.setupCard,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
             <Card.Content>
               <View style={styles.setupHeader}>
                 <View style={styles.setupInfo}>
-                  <Title style={styles.setupTitle}>⚙️ Account Setup</Title>
-                  <Text style={styles.setupSubtitle}>
+                  <Title
+                    style={[styles.setupTitle, { color: theme.colors.text }]}
+                  >
+                    ⚙️ Account Setup
+                  </Title>
+                  <Text
+                    style={[
+                      styles.setupSubtitle,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
                     Configure your payment frequency, amount, and tithing
                     preferences
                   </Text>
@@ -391,43 +486,17 @@ const HomeScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* User Guide */}
-          <Card style={styles.guideCard}>
-            <Card.Content>
-              <View style={styles.guideContainer}>
-                <MaterialIcons
-                  name="info"
-                  size={20}
-                  color={theme.colors.primary}
-                />
-                <Text
-                  style={[
-                    styles.guideText,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  💡 Click the{" "}
-                  <Text
-                    style={[
-                      styles.guideHighlight,
-                      { color: theme.colors.accent },
-                    ]}
-                  >
-                    + button
-                  </Text>{" "}
-                  at the bottom right to add new expenses
-                </Text>
-              </View>
-            </Card.Content>
-          </Card>
-
-          {/* Time Period Tabs */}
-          <View style={styles.tabContainer}>
+          <View
+            style={[
+              styles.tabContainer,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
             {[
               { key: "daily", label: "Daily", icon: "today" },
               { key: "weekly", label: "Weekly", icon: "view-week" },
               { key: "monthly", label: "Monthly", icon: "calendar-month" },
-              { key: "yearly", label: "Yearly", icon: "event" },
+              { key: "yearly", label: "Yearly", icon: "calendar-month" },
             ].map((tab) => (
               <TouchableOpacity
                 key={tab.key}
@@ -450,6 +519,10 @@ const HomeScreen = () => {
                   style={[
                     styles.tabLabel,
                     activeTab === tab.key && styles.activeTabLabel,
+                    {
+                      color:
+                        activeTab === tab.key ? "#ffffff" : theme.colors.text,
+                    },
                   ]}
                 >
                   {tab.label}
@@ -458,25 +531,43 @@ const HomeScreen = () => {
             ))}
           </View>
 
-          {/* Quick Stats */}
           <View style={styles.statsContainer}>
-            <Card style={styles.statCard}>
+            <Card
+              style={[
+                styles.statCard,
+                { backgroundColor: theme.colors.surface },
+              ]}
+            >
               <Card.Content>
-                <Title style={styles.statTitle}>
+                <Title style={[styles.statTitle, { color: theme.colors.text }]}>
                   {getCurrentPeriodLabel()} Expenses
                 </Title>
-                <Text style={styles.statAmount}>
+                <Text
+                  style={[styles.statAmount, { color: theme.colors.primary }]}
+                >
                   ${getCurrentExpensesTotal().toFixed(2)}
                 </Text>
-                <Text style={styles.statSubtitle}>
+                <Text
+                  style={[
+                    styles.statSubtitle,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
                   {getCurrentExpenses().length} items
                 </Text>
               </Card.Content>
             </Card>
 
-            <Card style={styles.statCard}>
+            <Card
+              style={[
+                styles.statCard,
+                { backgroundColor: theme.colors.surface },
+              ]}
+            >
               <Card.Content>
-                <Title style={styles.statTitle}>Remaining</Title>
+                <Title style={[styles.statTitle, { color: theme.colors.text }]}>
+                  Remaining
+                </Title>
                 <Text
                   style={[
                     styles.statAmount,
@@ -490,7 +581,12 @@ const HomeScreen = () => {
                 >
                   ${getCurrentBudgetRemaining().toFixed(2)}
                 </Text>
-                <Text style={styles.statSubtitle}>
+                <Text
+                  style={[
+                    styles.statSubtitle,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
                   Available{" "}
                   {activeTab === "daily"
                     ? "today"
@@ -500,7 +596,6 @@ const HomeScreen = () => {
             </Card>
           </View>
 
-          {/* Budget Progress */}
           <Card
             style={[
               styles.budgetCard,
@@ -512,7 +607,6 @@ const HomeScreen = () => {
                 {getCurrentPeriodLabel()} Budget Progress
               </Title>
 
-              {/* Current Period Budget */}
               <View style={styles.budgetItem}>
                 <View style={styles.budgetHeader}>
                   <Text
@@ -532,7 +626,12 @@ const HomeScreen = () => {
                     {Math.round(getCurrentBudgetProgress() * 100)}%
                   </Text>
                 </View>
-                <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBarContainer,
+                    { backgroundColor: theme.colors.border || "#e0e0e0" },
+                  ]}
+                >
                   <View
                     style={[
                       styles.progressBar,
@@ -552,7 +651,171 @@ const HomeScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* Analytics Section */}
+          <Card
+            style={[
+              styles.summaryCard,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
+            <Card.Content>
+              <Title
+                style={[styles.summaryTitle, { color: theme.colors.text }]}
+              >
+                📊 Budget Performance Summary
+              </Title>
+              <Text
+                style={[
+                  styles.summarySubtitle,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                How you're doing compared to previous periods
+              </Text>
+
+              <View style={styles.summaryGrid}>
+                <View
+                  style={[
+                    styles.summaryItem,
+                    { backgroundColor: theme.colors.surfaceVariant },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.summaryItemTitle,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    Daily Trend
+                  </Text>
+                  <Text
+                    style={[
+                      styles.summaryItemValue,
+                      {
+                        color:
+                          previousSpending.daily > 0
+                            ? currentSpending.daily > previousSpending.daily
+                              ? theme.colors.error
+                              : theme.colors.success
+                            : theme.colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {previousSpending.daily > 0
+                      ? currentSpending.daily > previousSpending.daily
+                        ? "↗️ Spending Up"
+                        : "↘️ Spending Down"
+                      : "No previous data"}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.summaryItem,
+                    { backgroundColor: theme.colors.surfaceVariant },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.summaryItemTitle,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    Weekly Trend
+                  </Text>
+                  <Text
+                    style={[
+                      styles.summaryItemValue,
+                      {
+                        color:
+                          previousSpending.weekly > 0
+                            ? currentSpending.weekly > previousSpending.weekly
+                              ? theme.colors.error
+                              : theme.colors.success
+                            : theme.colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {previousSpending.weekly > 0
+                      ? currentSpending.weekly > previousSpending.weekly
+                        ? "↗️ Spending Up"
+                        : "↘️ Spending Down"
+                      : "No previous data"}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.summaryItem,
+                    { backgroundColor: theme.colors.surfaceVariant },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.summaryItemTitle,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    Monthly Trend
+                  </Text>
+                  <Text
+                    style={[
+                      styles.summaryItemValue,
+                      {
+                        color:
+                          previousSpending.monthly > 0
+                            ? currentSpending.monthly > previousSpending.monthly
+                              ? theme.colors.error
+                              : theme.colors.success
+                            : theme.colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {previousSpending.monthly > 0
+                      ? currentSpending.monthly > previousSpending.monthly
+                        ? "↗️ Spending Up"
+                        : "↘️ Spending Down"
+                      : "No previous data"}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.summaryItem,
+                    { backgroundColor: theme.colors.surfaceVariant },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.summaryItemTitle,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    Yearly Trend
+                  </Text>
+                  <Text
+                    style={[
+                      styles.summaryItemValue,
+                      {
+                        color:
+                          previousSpending.yearly > 0
+                            ? currentSpending.yearly > previousSpending.yearly
+                              ? theme.colors.error
+                              : theme.colors.success
+                            : theme.colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {previousSpending.yearly > 0
+                      ? currentSpending.yearly > previousSpending.yearly
+                        ? "↗️ Spending Up"
+                        : "↘️ Spending Down"
+                      : "No previous data"}
+                  </Text>
+                </View>
+              </View>
+            </Card.Content>
+          </Card>
+
           <Card
             style={[
               styles.analyticsCard,
@@ -566,7 +829,6 @@ const HomeScreen = () => {
                 📊 Analytics & Insights
               </Title>
 
-              {/* Category Breakdown - Pie Chart */}
               {getCurrentExpenses().length > 0 && (
                 <View style={styles.chartContainer}>
                   <Text
@@ -597,7 +859,6 @@ const HomeScreen = () => {
                 </View>
               )}
 
-              {/* Spending Trends - Bar Chart */}
               {getCurrentExpenses().length > 0 && (
                 <View style={styles.chartContainer}>
                   <Text
@@ -627,8 +888,12 @@ const HomeScreen = () => {
                 </View>
               )}
 
-              {/* Quick Insights */}
-              <View style={styles.insightsContainer}>
+              <View
+                style={[
+                  styles.insightsContainer,
+                  { borderTopColor: theme.colors.border || "#e0e0e0" },
+                ]}
+              >
                 <Text
                   style={[styles.insightsTitle, { color: theme.colors.text }]}
                 >
@@ -692,14 +957,23 @@ const HomeScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* Current Period Expenses */}
-          <Card style={styles.expensesCard}>
+          <Card
+            style={[
+              styles.expensesCard,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
             <Card.Content>
-              <Title style={styles.cardTitle}>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
                 {getCurrentPeriodLabel()} Expenses
               </Title>
               {getCurrentExpenses().length === 0 ? (
-                <Text style={styles.noExpenses}>
+                <Text
+                  style={[
+                    styles.noExpenses,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
                   No expenses logged{" "}
                   {activeTab === "daily"
                     ? "today"
@@ -707,7 +981,13 @@ const HomeScreen = () => {
                 </Text>
               ) : (
                 getCurrentExpenses().map((expense) => (
-                  <View key={expense.id} style={styles.expenseItem}>
+                  <View
+                    key={expense.id}
+                    style={[
+                      styles.expenseItem,
+                      { borderBottomColor: theme.colors.border || "#f0f0f0" },
+                    ]}
+                  >
                     <View style={styles.expenseLeft}>
                       <MaterialIcons
                         name={getCategoryIcon(expense.category)}
@@ -716,15 +996,30 @@ const HomeScreen = () => {
                         style={styles.expenseIcon}
                       />
                       <View>
-                        <Text style={styles.expenseDescription}>
+                        <Text
+                          style={[
+                            styles.expenseDescription,
+                            { color: theme.colors.text },
+                          ]}
+                        >
                           {expense.description}
                         </Text>
-                        <Text style={styles.expenseCategory}>
+                        <Text
+                          style={[
+                            styles.expenseCategory,
+                            { color: theme.colors.textSecondary },
+                          ]}
+                        >
                           {expense.category}
                         </Text>
                       </View>
                     </View>
-                    <Text style={styles.expenseAmount}>
+                    <Text
+                      style={[
+                        styles.expenseAmount,
+                        { color: theme.colors.primary },
+                      ]}
+                    >
                       ${expense.amount.toFixed(2)}
                     </Text>
                   </View>
@@ -733,26 +1028,53 @@ const HomeScreen = () => {
             </Card.Content>
           </Card>
 
-          {/* Current Period Summary */}
-          <Card style={styles.summaryCard}>
+          <Card
+            style={[
+              styles.summaryCard,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
             <Card.Content>
-              <Title style={styles.cardTitle}>
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
                 {getCurrentPeriodLabel()} Summary
               </Title>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Total Expenses:</Text>
-                <Text style={styles.summaryValue}>
+                <Text
+                  style={[
+                    styles.summaryLabel,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  Total Expenses:
+                </Text>
+                <Text
+                  style={[styles.summaryValue, { color: theme.colors.text }]}
+                >
                   ${getCurrentExpensesTotal().toFixed(2)}
                 </Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Days Tracked:</Text>
-                <Text style={styles.summaryValue}>
+                <Text
+                  style={[
+                    styles.summaryLabel,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  Days Tracked:
+                </Text>
+                <Text
+                  style={[styles.summaryValue, { color: theme.colors.text }]}
+                >
                   {new Set(getCurrentExpenses().map((e) => e.date)).size}/
                   {getCurrentPeriodDays()}
                 </Text>
               </View>
-              <Text style={styles.summaryNote}>
+              <Text
+                style={[
+                  styles.summaryNote,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
                 {activeTab === "monthly"
                   ? `📅 ${getCurrentPeriodDays()} days in ${format(new Date(), "MMMM")}`
                   : activeTab === "yearly"
@@ -763,86 +1085,6 @@ const HomeScreen = () => {
           </Card>
         </ScrollView>
       </View>
-
-      {/* Add Expense FAB */}
-      <FAB
-        style={styles.fab}
-        icon="plus"
-        onPress={() => setAddExpenseVisible(true)}
-      />
-
-      {/* Add Expense Modal */}
-      <Portal>
-        <Modal
-          visible={addExpenseVisible}
-          onDismiss={() => setAddExpenseVisible(false)}
-          contentContainerStyle={styles.modal}
-        >
-          <Title style={styles.modalTitle}>Add Expense</Title>
-
-          <TextInput
-            label="Amount"
-            value={newExpense.amount}
-            onChangeText={(text) =>
-              setNewExpense({ ...newExpense, amount: text })
-            }
-            keyboardType="numeric"
-            mode="outlined"
-            style={styles.modalInput}
-            placeholder="0.00"
-          />
-
-          <TextInput
-            label="Description"
-            value={newExpense.description}
-            onChangeText={(text) =>
-              setNewExpense({ ...newExpense, description: text })
-            }
-            mode="outlined"
-            style={styles.modalInput}
-            placeholder="What did you spend on?"
-          />
-
-          <TextInput
-            label="Category (Optional)"
-            value={newExpense.category}
-            onChangeText={(text) =>
-              setNewExpense({ ...newExpense, category: text })
-            }
-            mode="outlined"
-            style={styles.modalInput}
-            placeholder="Food, Transport, etc."
-          />
-
-          <TextInput
-            label="Payment Method"
-            value={newExpense.paymentMethod}
-            onChangeText={(text) =>
-              setNewExpense({ ...newExpense, paymentMethod: text })
-            }
-            mode="outlined"
-            style={styles.modalInput}
-            placeholder="Cash, Credit Card, etc."
-          />
-
-          <View style={styles.modalButtons}>
-            <Button
-              mode="outlined"
-              onPress={() => setAddExpenseVisible(false)}
-              style={styles.modalButton}
-            >
-              Cancel
-            </Button>
-            <Button
-              mode="contained"
-              onPress={handleAddExpense}
-              style={styles.modalButton}
-            >
-              Add
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
 
       <Snackbar
         visible={snackbarVisible}
@@ -915,7 +1157,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     elevation: 2,
     borderRadius: 12,
-    backgroundColor: "#f8f9fa",
   },
   guideContainer: {
     flexDirection: "row",
@@ -933,7 +1174,6 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: "#ffffff",
     marginHorizontal: 10,
     marginBottom: 10,
     borderRadius: 12,
@@ -957,11 +1197,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     marginLeft: 6,
-    color: "#6C757D",
   },
-  activeTabLabel: {
-    color: "#ffffff",
-  },
+  activeTabLabel: {},
   statsContainer: {
     flexDirection: "row",
     padding: 10,
@@ -974,18 +1211,15 @@ const styles = StyleSheet.create({
   },
   statTitle: {
     fontSize: 14,
-    color: "#666",
     marginBottom: 8,
   },
   statAmount: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
     marginBottom: 4,
   },
   statSubtitle: {
     fontSize: 12,
-    color: "#999",
   },
   expensesCard: {
     margin: 20,
@@ -997,11 +1231,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 15,
-    color: "#333",
   },
   noExpenses: {
     textAlign: "center",
-    color: "#999",
     fontStyle: "italic",
     padding: 20,
   },
@@ -1011,7 +1243,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   expenseLeft: {
     flexDirection: "row",
@@ -1024,17 +1255,14 @@ const styles = StyleSheet.create({
   expenseDescription: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
     marginBottom: 2,
   },
   expenseCategory: {
     fontSize: 12,
-    color: "#666",
   },
   expenseAmount: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#2196F3",
   },
   summaryCard: {
     margin: 20,
@@ -1050,52 +1278,18 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: "#666",
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
   },
   summaryNote: {
     fontSize: 12,
-    color: "#666",
     fontStyle: "italic",
     textAlign: "center",
     marginTop: 8,
   },
-  fab: {
-    position: "absolute",
-    margin: 16,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#2196F3",
-  },
-  modal: {
-    backgroundColor: "white",
-    padding: 20,
-    margin: 20,
-    borderRadius: 12,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  modalInput: {
-    marginBottom: 15,
-    backgroundColor: "#ffffff",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  modalButton: {
-    flex: 1,
-    marginHorizontal: 5,
-  },
+
   budgetCard: {
     margin: 20,
     marginBottom: 15,
@@ -1126,7 +1320,6 @@ const styles = StyleSheet.create({
   },
   progressBarContainer: {
     height: 8,
-    backgroundColor: "#e0e0e0",
     borderRadius: 4,
     overflow: "hidden",
   },
@@ -1134,14 +1327,12 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 4,
   },
-  // Setup card styles
   setupCard: {
     margin: 10,
     marginTop: 5,
     marginBottom: 15,
     elevation: 4,
     borderRadius: 12,
-    backgroundColor: "#f8f9fa",
   },
   setupHeader: {
     flexDirection: "row",
@@ -1156,14 +1347,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 5,
-    color: "#333",
   },
   setupSubtitle: {
     fontSize: 14,
-    color: "#666",
     lineHeight: 20,
   },
-  // Analytics styles
   analyticsCard: {
     margin: 20,
     marginBottom: 15,
@@ -1190,7 +1378,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
   },
   insightsTitle: {
     fontSize: 16,
@@ -1208,6 +1395,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 10,
     flex: 1,
+  },
+  summaryCard: {
+    margin: 20,
+    marginBottom: 15,
+    elevation: 4,
+    borderRadius: 12,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  summarySubtitle: {
+    fontSize: 14,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  summaryItem: {
+    width: "48%",
+    alignItems: "center",
+    padding: 15,
+    borderRadius: 8,
+  },
+  summaryItemTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  summaryItemValue: {
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
 

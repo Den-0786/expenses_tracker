@@ -1,14 +1,14 @@
 const express = require("express");
+const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
+const { authenticateToken } = require("../middleware/auth");
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get user profile
-router.get("/profile", async (req, res) => {
+router.get("/profile", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -34,7 +34,6 @@ router.get("/profile", async (req, res) => {
       user,
     });
   } catch (error) {
-    console.error("Get user profile error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to get user profile",
@@ -42,28 +41,50 @@ router.get("/profile", async (req, res) => {
   }
 });
 
-// Update user profile
-router.put("/profile", async (req, res) => {
+router.put("/profile", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
-    const { username, email, hasCompletedOnboarding } = req.body;
+    const userId = req.user.id;
+    const { username, email } = req.body;
+
+    if (!username && !email) {
+      return res.status(400).json({
+        error: "Missing fields",
+        message: "At least one field (username or email) is required",
+      });
+    }
+
+    const updateData = {};
+    if (username) updateData.username = username;
+    if (email) updateData.email = email;
+
+    if (username || email) {
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            ...(username ? [{ username }] : []),
+            ...(email ? [{ email }] : []),
+          ],
+          NOT: { id: userId },
+        },
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          error: "Update failed",
+          message: "Username or email already taken",
+        });
+      }
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: {
-        username: username || undefined,
-        email: email || undefined,
-        hasCompletedOnboarding:
-          hasCompletedOnboarding !== undefined
-            ? hasCompletedOnboarding
-            : undefined,
-      },
+      data: updateData,
       select: {
         id: true,
         username: true,
         email: true,
         hasCompletedOnboarding: true,
+        createdAt: true,
         updatedAt: true,
       },
     });
@@ -74,10 +95,9 @@ router.put("/profile", async (req, res) => {
       user: updatedUser,
     });
   } catch (error) {
-    console.error("Update user profile error:", error);
     res.status(500).json({
       error: "Internal server error",
-      message: "Failed to update user profile",
+      message: "Failed to update profile",
     });
   }
 });

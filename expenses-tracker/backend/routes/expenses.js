@@ -1,14 +1,13 @@
 const express = require("express");
 const { PrismaClient } = require("@prisma/client");
+const { authenticateToken } = require("../middleware/auth");
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get all expenses for a user
-router.get("/", async (req, res) => {
+router.get("/", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
 
     const expenses = await prisma.expense.findMany({
       where: { userId },
@@ -25,7 +24,6 @@ router.get("/", async (req, res) => {
       expenses,
     });
   } catch (error) {
-    console.error("Get expenses error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to get expenses",
@@ -33,11 +31,9 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get expenses by date range
-router.get("/by-date-range", async (req, res) => {
+router.get("/by-date-range", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { startDate, endDate } = req.query;
 
     if (!startDate || !endDate) {
@@ -68,7 +64,6 @@ router.get("/by-date-range", async (req, res) => {
       expenses,
     });
   } catch (error) {
-    console.error("Get expenses by date range error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to get expenses by date range",
@@ -76,11 +71,9 @@ router.get("/by-date-range", async (req, res) => {
   }
 });
 
-// Create new expense
-router.post("/", async (req, res) => {
+router.post("/", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { title, amount, date, description, categoryId } = req.body;
 
     if (!title || !amount) {
@@ -110,7 +103,6 @@ router.post("/", async (req, res) => {
       expense,
     });
   } catch (error) {
-    console.error("Create expense error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to create expense",
@@ -118,18 +110,16 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Update expense
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { id } = req.params;
     const { title, amount, date, description, categoryId } = req.body;
 
     const expense = await prisma.expense.update({
       where: {
         id: parseInt(id),
-        userId, // Ensure user owns this expense
+        userId,
       },
       data: {
         title: title || undefined,
@@ -149,7 +139,6 @@ router.put("/:id", async (req, res) => {
       expense,
     });
   } catch (error) {
-    console.error("Update expense error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to update expense",
@@ -157,17 +146,15 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// Delete expense
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, async (req, res) => {
   try {
-    // TODO: Add authentication middleware
-    const userId = req.user?.id || 1; // Temporary for development
+    const userId = req.user.id;
     const { id } = req.params;
 
     await prisma.expense.delete({
       where: {
         id: parseInt(id),
-        userId, // Ensure user owns this expense
+        userId,
       },
     });
 
@@ -176,7 +163,6 @@ router.delete("/:id", async (req, res) => {
       message: "Expense deleted successfully",
     });
   } catch (error) {
-    console.error("Delete expense error:", error);
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to delete expense",

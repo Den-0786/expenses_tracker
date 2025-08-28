@@ -30,10 +30,12 @@ import {
   isThisMonth,
 } from "date-fns";
 import { useDatabase } from "../context/DatabaseContext";
+import { useTheme } from "../context/ThemeContext";
 
 const ExpensesScreen = () => {
-  const { getExpensesByDateRange, updateExpense, deleteExpense } =
+  const { getExpensesByDateRange, updateExpense, deleteExpense, addExpense } =
     useDatabase();
+  const { theme, isDarkMode } = useTheme();
 
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
@@ -51,6 +53,15 @@ const ExpensesScreen = () => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarType, setSnackbarType] = useState("success");
+  const [addExpenseModalVisible, setAddExpenseModalVisible] = useState(false);
+  const [newExpense, setNewExpense] = useState({
+    amount: "",
+    description: "",
+    category: "",
+    paymentMethod: "Cash",
+  });
+  const [actionsModalVisible, setActionsModalVisible] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
 
   useEffect(() => {
     loadExpenses();
@@ -66,6 +77,9 @@ const ExpensesScreen = () => {
       let startDate;
 
       switch (dateRange) {
+        case "day":
+          startDate = format(new Date(), "yyyy-MM-dd");
+          break;
         case "week":
           startDate = format(
             new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -86,9 +100,7 @@ const ExpensesScreen = () => {
       setExpenses(
         expensesData.sort((a, b) => new Date(b.date) - new Date(a.date))
       );
-    } catch (error) {
-      console.error("Error loading expenses:", error);
-    }
+    } catch (error) {}
   };
 
   const onRefresh = async () => {
@@ -100,7 +112,6 @@ const ExpensesScreen = () => {
   const filterExpenses = () => {
     let filtered = expenses;
 
-    // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(
         (expense) =>
@@ -111,7 +122,6 @@ const ExpensesScreen = () => {
       );
     }
 
-    // Apply category filter
     if (selectedFilter !== "all") {
       filtered = filtered.filter(
         (expense) => expense.category === selectedFilter
@@ -129,6 +139,7 @@ const ExpensesScreen = () => {
       category: expense.category || "",
     });
     setEditModalVisible(true);
+    setActionsModalVisible(false);
   };
 
   const showSnackbar = (message, type = "info") => {
@@ -162,18 +173,64 @@ const ExpensesScreen = () => {
 
       showSnackbar("Expense updated successfully!", "success");
     } catch (error) {
-      console.error("Error updating expense:", error);
       showSnackbar("Failed to update expense. Please try again.", "error");
     }
   };
 
-  const handleDeleteExpense = async (expense) => {
+  const handleAddExpense = async () => {
+    if (!newExpense.amount || !newExpense.description) {
+      showSnackbar("Please fill in all required fields.", "error");
+      return;
+    }
+
     try {
-      await deleteExpense(expense.id);
+      await addExpense(
+        parseFloat(newExpense.amount),
+        newExpense.description,
+        "General",
+        format(new Date(), "yyyy-MM-dd"),
+        "Cash"
+      );
+
+      setNewExpense({
+        amount: "",
+        description: "",
+        category: "",
+        paymentMethod: "Cash",
+      });
+      setAddExpenseModalVisible(false);
       await loadExpenses();
+
+      showSnackbar("Expense added successfully!", "success");
+    } catch (error) {
+      showSnackbar("Failed to add expense. Please try again.", "error");
+    }
+  };
+
+  const openActionsModal = (expense) => {
+    setSelectedExpense(expense);
+    setActionsModalVisible(true);
+  };
+
+  const openDeleteConfirmation = (expense) => {
+    setSelectedExpense(expense);
+    setDeleteConfirmVisible(true);
+    setActionsModalVisible(false);
+  };
+
+  const confirmDeleteExpense = async () => {
+    try {
+      if (!selectedExpense || !selectedExpense.id) {
+        showSnackbar("Invalid expense data", "error");
+        return;
+      }
+
+      await deleteExpense(selectedExpense.id);
+      await loadExpenses();
+      setDeleteConfirmVisible(false);
+      setSelectedExpense(null);
       showSnackbar("Expense deleted successfully!", "success");
     } catch (error) {
-      console.error("Error deleting expense:", error);
       showSnackbar("Failed to delete expense. Please try again.", "error");
     }
   };
@@ -228,7 +285,6 @@ const ExpensesScreen = () => {
 
   return (
     <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
-      {/* Sticky Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Expenses</Text>
         <Text style={styles.headerSubtitle}>
@@ -236,10 +292,22 @@ const ExpensesScreen = () => {
         </Text>
       </View>
 
-      {/* Main Content Container - Gray Parent Card */}
-      <View style={styles.contentContainer}>
-        {/* Sticky Filters */}
-        <View style={styles.filtersContainer}>
+      <View
+        style={[
+          styles.contentContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
+        <View
+          style={[
+            styles.filtersContainer,
+            {
+              backgroundColor: theme.colors.surface,
+              borderWidth: 2,
+              borderColor: "#90EE90",
+            },
+          ]}
+        >
           <Searchbar
             placeholder="Search expenses..."
             onChangeText={setSearchQuery}
@@ -279,9 +347,9 @@ const ExpensesScreen = () => {
             style={styles.dateFilterScroll}
           >
             {[
+              { key: "day", label: "Today" },
               { key: "week", label: "This Week" },
               { key: "month", label: "This Month" },
-              { key: "all", label: "All Time" },
             ].map((filter) => (
               <Chip
                 key={filter.key}
@@ -296,7 +364,6 @@ const ExpensesScreen = () => {
           </ScrollView>
         </View>
 
-        {/* Scrollable Expenses List */}
         <ScrollView
           style={styles.scrollView}
           refreshControl={
@@ -304,12 +371,23 @@ const ExpensesScreen = () => {
           }
           showsVerticalScrollIndicator={false}
         >
-          {/* Expenses List */}
           {filteredExpenses.length === 0 ? (
             <View style={styles.emptyState}>
               <MaterialIcons name="receipt" size={64} color="#ccc" />
-              <Text style={styles.emptyStateText}>No expenses found</Text>
-              <Text style={styles.emptyStateSubtext}>
+              <Text
+                style={[
+                  styles.emptyStateText,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                No expenses found
+              </Text>
+              <Text
+                style={[
+                  styles.emptyStateSubtext,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
                 {searchQuery
                   ? "Try adjusting your search or filters"
                   : "Add your first expense to get started"}
@@ -319,57 +397,47 @@ const ExpensesScreen = () => {
             Object.entries(groupExpensesByDate()).map(
               ([date, dateExpenses]) => (
                 <View key={date} style={styles.dateGroup}>
-                  <Text style={styles.dateHeader}>{getDateLabel(date)}</Text>
+                  <Text
+                    style={[
+                      styles.dateHeader,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    {getDateLabel(date)}
+                  </Text>
                   {dateExpenses.map((expense) => (
-                    <Card key={expense.id} style={styles.expenseCard}>
+                    <Card
+                      key={expense.id}
+                      style={[
+                        styles.expenseCard,
+                        { backgroundColor: theme.colors.surface },
+                      ]}
+                    >
                       <Card.Content>
                         <View style={styles.expenseHeader}>
-                          <View style={styles.expenseLeft}>
-                            <MaterialIcons
-                              name={getCategoryIcon(expense.category)}
-                              size={24}
-                              color="#2196F3"
-                              style={styles.expenseIcon}
-                            />
-                            <View style={styles.expenseInfo}>
-                              <Text style={styles.expenseDescription}>
-                                {expense.description}
-                              </Text>
-                              <Text style={styles.expenseCategory}>
-                                {expense.category || "General"}
-                              </Text>
-                              <Text style={styles.expenseTime}>
-                                {format(parseISO(expense.created_at), "h:mm a")}
-                              </Text>
+                          <Text
+                            style={[
+                              styles.expenseDescription,
+                              { color: theme.colors.text },
+                            ]}
+                          >
+                            {expense.description}
+                          </Text>
+                          <Text style={styles.expenseAmount}>
+                            ${expense.amount.toFixed(2)}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => openActionsModal(expense)}
+                            style={styles.actionButton}
+                          >
+                            <View style={styles.actionButtonBorder}>
+                              <MaterialIcons
+                                name="more-vert"
+                                size={24}
+                                color={theme.colors.textSecondary}
+                              />
                             </View>
-                          </View>
-                          <View style={styles.expenseRight}>
-                            <Text style={styles.expenseAmount}>
-                              ${expense.amount.toFixed(2)}
-                            </Text>
-                            <View style={styles.expenseActions}>
-                              <TouchableOpacity
-                                onPress={() => handleEditExpense(expense)}
-                                style={styles.actionButton}
-                              >
-                                <MaterialIcons
-                                  name="edit"
-                                  size={20}
-                                  color="#666"
-                                />
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                onPress={() => handleDeleteExpense(expense)}
-                                style={styles.actionButton}
-                              >
-                                <MaterialIcons
-                                  name="delete"
-                                  size={20}
-                                  color="#F44336"
-                                />
-                              </TouchableOpacity>
-                            </View>
-                          </View>
+                          </TouchableOpacity>
                         </View>
                       </Card.Content>
                     </Card>
@@ -381,14 +449,28 @@ const ExpensesScreen = () => {
         </ScrollView>
       </View>
 
-      {/* Edit Expense Modal */}
+      <FAB
+        style={styles.fab}
+        icon="plus"
+        onPress={() => setAddExpenseModalVisible(true)}
+      />
+
       <Portal>
         <Modal
           visible={editModalVisible}
           onDismiss={() => setEditModalVisible(false)}
-          contentContainerStyle={styles.modal}
+          contentContainerStyle={[
+            styles.modal,
+            {
+              backgroundColor: theme.colors.surface,
+              borderWidth: 2,
+              borderColor: "#90EE90",
+            },
+          ]}
         >
-          <Title style={styles.modalTitle}>Edit Expense</Title>
+          <Title style={[styles.modalTitle, { color: theme.colors.text }]}>
+            Edit Expense
+          </Title>
 
           <TextInput
             label="Amount"
@@ -436,6 +518,188 @@ const ExpensesScreen = () => {
               style={styles.modalButton}
             >
               Update
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      <Portal>
+        <Modal
+          visible={addExpenseModalVisible}
+          onDismiss={() => setAddExpenseModalVisible(false)}
+          contentContainerStyle={[
+            styles.modal,
+            {
+              backgroundColor: theme.colors.surface,
+              borderWidth: 2,
+              borderColor: "#90EE90",
+              marginTop: -120,
+            },
+          ]}
+        >
+          <Title style={[styles.modalTitle, { color: theme.colors.text }]}>
+            Add Expense
+          </Title>
+
+          <TextInput
+            label="Amount"
+            value={newExpense.amount}
+            onChangeText={(text) =>
+              setNewExpense({ ...newExpense, amount: text })
+            }
+            keyboardType="numeric"
+            mode="outlined"
+            style={[
+              styles.modalInput,
+              { backgroundColor: theme.colors.surface },
+            ]}
+            placeholder="0.00"
+            placeholderTextColor={theme.colors.textSecondary}
+            theme={{
+              colors: {
+                primary: theme.colors.primary,
+                text: theme.colors.text,
+                placeholder: theme.colors.textSecondary,
+              },
+            }}
+          />
+
+          <TextInput
+            label="Description"
+            value={newExpense.description}
+            onChangeText={(text) =>
+              setNewExpense({ ...newExpense, description: text })
+            }
+            mode="outlined"
+            style={[
+              styles.modalInput,
+              { backgroundColor: theme.colors.surface },
+            ]}
+            placeholder="What did you spend on?"
+            placeholderTextColor={theme.colors.textSecondary}
+            theme={{
+              colors: {
+                primary: theme.colors.primary,
+                text: theme.colors.text,
+                placeholder: theme.colors.textSecondary,
+              },
+            }}
+          />
+
+          <View style={styles.modalButtons}>
+            <Button
+              mode="outlined"
+              onPress={() => setAddExpenseModalVisible(false)}
+              style={styles.modalButton}
+              textColor={theme.colors.text}
+              buttonColor={theme.colors.surface}
+            >
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleAddExpense}
+              style={styles.modalButton}
+              buttonColor={theme.colors.primary}
+              textColor={theme.colors.surface}
+            >
+              Add
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      <Portal>
+        <Modal
+          visible={actionsModalVisible}
+          onDismiss={() => setActionsModalVisible(false)}
+          contentContainerStyle={[
+            styles.actionsModal,
+            {
+              backgroundColor: theme.colors.surface,
+              borderWidth: 2,
+              borderColor: "#90EE90",
+            },
+          ]}
+        >
+          <Title
+            style={[styles.actionsModalTitle, { color: theme.colors.text }]}
+          >
+            Expense Actions
+          </Title>
+          <View style={styles.actionsList}>
+            <TouchableOpacity
+              style={[
+                styles.actionItem,
+                { borderBottomColor: theme.colors.border || "#e0e0e0" },
+              ]}
+              onPress={() => handleEditExpense(selectedExpense)}
+            >
+              <MaterialIcons name="edit" size={24} color="#2196F3" />
+              <Text style={[styles.actionText, { color: theme.colors.text }]}>
+                Edit Expense
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionItem}
+              onPress={() => openDeleteConfirmation(selectedExpense)}
+            >
+              <MaterialIcons name="delete" size={24} color="#F44336" />
+              <Text style={[styles.actionText, { color: theme.colors.text }]}>
+                Delete Expense
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+      </Portal>
+
+      <Portal>
+        <Modal
+          visible={deleteConfirmVisible}
+          onDismiss={() => setDeleteConfirmVisible(false)}
+          contentContainerStyle={[
+            styles.modal,
+            {
+              backgroundColor: theme.colors.surface,
+              borderWidth: 2,
+              borderColor: "#F44336",
+            },
+          ]}
+        >
+          <Title style={[styles.modalTitle, { color: theme.colors.text }]}>
+            Delete Expense
+          </Title>
+
+          <Text style={[styles.confirmText, { color: theme.colors.text }]}>
+            Are you sure you want to delete "{selectedExpense?.description}"?
+          </Text>
+
+          <Text style={[styles.confirmAmount, { color: theme.colors.text }]}>
+            Amount: ${selectedExpense?.amount?.toFixed(2)}
+          </Text>
+
+          <Text style={[styles.confirmWarning, { color: "#F44336" }]}>
+            This action cannot be undone.
+          </Text>
+
+          <View style={styles.modalButtons}>
+            <Button
+              mode="outlined"
+              onPress={() => setDeleteConfirmVisible(false)}
+              style={styles.modalButton}
+              textColor={theme.colors.text}
+              buttonColor={theme.colors.surface}
+            >
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={confirmDeleteExpense}
+              style={styles.modalButton}
+              buttonColor="#F44336"
+              textColor={theme.colors.surface}
+            >
+              Delete
             </Button>
           </View>
         </Modal>
@@ -579,48 +843,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  },
-  expenseLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  expenseIcon: {
-    marginRight: 12,
-  },
-  expenseInfo: {
-    flex: 1,
+    paddingVertical: 8,
   },
   expenseDescription: {
     fontSize: 17,
     fontWeight: "500",
     color: "#333",
-    marginBottom: 2,
-  },
-  expenseCategory: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 2,
-  },
-  expenseTime: {
-    fontSize: 10,
-    color: "#999",
-  },
-  expenseRight: {
-    alignItems: "flex-end",
+    flex: 1,
+    marginRight: 15,
   },
   expenseAmount: {
     fontSize: 15,
     fontWeight: "bold",
     color: "#2196F3",
-    marginBottom: 4,
-  },
-  expenseActions: {
-    flexDirection: "row",
+    marginRight: 15,
   },
   actionButton: {
-    padding: 8,
-    marginLeft: 8,
+    padding: 4,
+  },
+  actionButtonBorder: {
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+    borderRadius: 20,
+    padding: 4,
+    backgroundColor: "rgba(76, 175, 80, 0.1)",
   },
   modal: {
     backgroundColor: "white",
@@ -646,6 +892,58 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     marginHorizontal: 5,
+  },
+  fab: {
+    position: "absolute",
+    margin: 16,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#2196F3",
+  },
+  actionsModal: {
+    padding: 20,
+    margin: 20,
+    borderRadius: 12,
+    maxWidth: 300,
+    alignSelf: "center",
+  },
+  actionsModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  actionsList: {
+    gap: 0,
+  },
+  actionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    gap: 15,
+  },
+  actionText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  confirmText: {
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  confirmAmount: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  confirmWarning: {
+    fontSize: 14,
+    marginBottom: 20,
+    textAlign: "center",
+    fontStyle: "italic",
   },
 });
 
