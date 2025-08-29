@@ -427,10 +427,12 @@ const HomeScreen = () => {
   return (
     <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dashboard</Text>
-        <Text style={styles.headerSubtitle}>
-          {format(new Date(), "EEEE, MMMM d, yyyy")}
-        </Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Dashboard</Text>
+          <Text style={styles.headerSubtitle}>
+            {format(new Date(), "EEEE, MMMM d, yyyy")}
+          </Text>
+        </View>
       </View>
 
       <View
@@ -1083,16 +1085,22 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     paddingHorizontal: 20,
   },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 25,
     fontWeight: "bold",
     color: "#ffffff",
-    marginBottom: 8,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: "#ffffff",
     opacity: 0.9,
+    textAlign: "right",
+    top:7
   },
   contentContainer: {
     flex: 1,

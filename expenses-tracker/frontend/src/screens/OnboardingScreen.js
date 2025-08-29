@@ -40,7 +40,7 @@ const OnboardingScreen = () => {
   const { isSecurityEnabled } = useSecurity();
   const { showSecurityNotice, updateSecurityNoticeSetting } =
     useSecurityNotice();
-  const { completeOnboarding, isAuthenticated } = useAuth();
+  const { completeOnboarding, isAuthenticated, user } = useAuth();
 
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -205,24 +205,38 @@ const OnboardingScreen = () => {
       >
         <View style={styles.header}>
           <View style={styles.headerBrand}>
-            <View style={styles.headerLogoCircle}>
+            <View style={styles.headerLeft}>
+              <View style={styles.headerLogoCircle}>
+                <Text
+                  style={[
+                    styles.headerBrandAcronym,
+                    { color: theme.colors.onPrimary },
+                  ]}
+                >
+                  ET
+                </Text>
+              </View>
               <Text
                 style={[
-                  styles.headerBrandAcronym,
+                  styles.headerBrandText,
                   { color: theme.colors.onPrimary },
                 ]}
               >
-                ET
+                EXPENSES TRACKER
               </Text>
             </View>
-            <Text
-              style={[
-                styles.headerBrandText,
-                { color: theme.colors.onPrimary },
-              ]}
-            >
-              EXPENSES TRACKER
-            </Text>
+            <View style={styles.headerRight}>
+              <Text
+                style={[styles.welcomeText, { color: theme.colors.onPrimary }]}
+              >
+                Welcome, {user?.username || "User"}!
+              </Text>
+              <Text
+                style={[styles.dateText, { color: theme.colors.onPrimary }]}
+              >
+                {new Date().toLocaleDateString()}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -661,35 +675,59 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    height: height * 0.25,
-    justifyContent: "center",
-    alignItems: "center",
+    height: height * 0.15,
+    justifyContent: "space-between",
+    alignItems: "stretch",
     paddingTop: 40,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   headerBrand: {
-    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    width: "100%",
+  },
+  headerLeft: {
+    alignItems: "flex-start",
+  },
+  headerRight: {
+    alignItems: "flex-end",
   },
   headerLogoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 15,
-    borderWidth: 2,
+    marginBottom: 8,
+    borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.3)",
   },
   headerBrandAcronym: {
-    fontSize: 32,
+    fontSize: 12,
     fontWeight: "bold",
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
   headerBrandText: {
+    fontSize: 10,
+    fontWeight: "600",
+    opacity: 0.9,
+    letterSpacing: 1,
+  },
+  welcomeText: {
     fontSize: 16,
-    fontWeight: "700",
-    opacity: 0.95,
-    letterSpacing: 2,
+    fontWeight: "600",
+    opacity: 0.9,
+    letterSpacing: 1,
+  },
+  dateText: {
+    fontSize: 14,
+    fontWeight: "500",
+    opacity: 0.8,
+    letterSpacing: 0.5,
+    marginTop: 5,
   },
   formContainer: {
     flex: 1,
@@ -697,7 +735,7 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   setupCard: {
-    flex: 1,
+    flex: 1.5,
     elevation: 8,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

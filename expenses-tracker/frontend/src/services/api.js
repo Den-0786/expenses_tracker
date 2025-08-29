@@ -77,6 +77,23 @@ class ApiService {
     });
   }
 
+  async updateUserProfileImage(profileImage) {
+    return this.request("/users/profile-image", {
+      method: "PUT",
+      body: JSON.stringify({ profileImage }),
+    });
+  }
+
+  async getUserProfileImage() {
+    return this.request("/users/profile-image");
+  }
+
+  async removeUserProfileImage() {
+    return this.request("/users/profile-image", {
+      method: "DELETE",
+    });
+  }
+
   // Expenses
   async getExpenses() {
     return this.request("/expenses");
@@ -315,4 +332,3 @@ class ApiService {
 }
 
 export default new ApiService();
-

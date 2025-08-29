@@ -293,10 +293,12 @@ const IncomeScreen = () => {
   return (
     <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Income</Text>
-        <Text style={styles.headerSubtitle}>
-          Total: GHC {getTotalAmount().toFixed(2)}
-        </Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Income</Text>
+          <Text style={styles.headerSubtitle}>
+            Total: GHC {getTotalAmount().toFixed(2)}
+          </Text>
+        </View>
       </View>
 
       <View
@@ -322,53 +324,55 @@ const IncomeScreen = () => {
             style={styles.searchBar}
           />
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterScroll}
-          >
-            <Chip
-              selected={selectedFilter === "all"}
-              onPress={() => setSelectedFilter("all")}
-              style={styles.filterChip}
-              textStyle={styles.filterChipText}
+          <View style={styles.filtersRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
             >
-              All
-            </Chip>
-            {getUniqueCategories().map((category) => (
               <Chip
-                key={category}
-                selected={selectedFilter === category}
-                onPress={() => setSelectedFilter(category)}
+                selected={selectedFilter === "all"}
+                onPress={() => setSelectedFilter("all")}
                 style={styles.filterChip}
                 textStyle={styles.filterChipText}
               >
-                {category}
+                All
               </Chip>
-            ))}
-          </ScrollView>
+              {getUniqueCategories().map((category) => (
+                <Chip
+                  key={category}
+                  selected={selectedFilter === category}
+                  onPress={() => setSelectedFilter(category)}
+                  style={styles.filterChip}
+                  textStyle={styles.filterChipText}
+                >
+                  {category}
+                </Chip>
+              ))}
+            </ScrollView>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.dateFilterScroll}
-          >
-            {[
-              { key: "day", label: "Today" },
-              { key: "week", label: "This Week" },
-              { key: "month", label: "This Month" },
-            ].map((filter) => (
-              <Chip
-                key={filter.key}
-                selected={dateRange === filter.key}
-                onPress={() => setDateRange(filter.key)}
-                style={styles.dateFilterChip}
-                textStyle={styles.dateFilterChipText}
-              >
-                {filter.label}
-              </Chip>
-            ))}
-          </ScrollView>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.dateFilterScroll}
+            >
+              {[
+                { key: "day", label: "Today" },
+                { key: "week", label: "This Week" },
+                { key: "month", label: "This Month" },
+              ].map((filter) => (
+                <Chip
+                  key={filter.key}
+                  selected={dateRange === filter.key}
+                  onPress={() => setDateRange(filter.key)}
+                  style={styles.dateFilterChip}
+                  textStyle={styles.dateFilterChipText}
+                >
+                  {filter.label}
+                </Chip>
+              ))}
+            </ScrollView>
+          </View>
         </View>
 
         <ScrollView
@@ -803,16 +807,22 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     paddingHorizontal: 20,
   },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 25,
     fontWeight: "bold",
     color: "#ffffff",
-    marginBottom: 8,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: "#ffffff",
     opacity: 0.9,
+    textAlign: "right",
+    top:7
   },
   contentContainer: {
     flex: 1,
@@ -829,9 +839,9 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     padding: 15,
-    marginTop: 10,
-    marginLeft: 0,
-    marginRight: 0,
+    marginTop: 2,
+    marginLeft: 10,
+    marginRight: 10,
     marginBottom: 0,
     borderRadius: 12,
     elevation: 2,
@@ -840,8 +850,14 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     elevation: 2,
   },
+  filtersRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 15,
+  },
   filterScroll: {
-    marginBottom: 15,
+    marginBottom: 0,
   },
   filterChip: {
     marginRight: 10,
@@ -850,7 +866,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   dateFilterScroll: {
-    marginBottom: 10,
+    marginBottom: 0,
   },
   dateFilterChip: {
     marginRight: 10,

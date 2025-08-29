@@ -641,10 +641,12 @@ const NotesScreen = () => {
     <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
       {/* Sticky Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notes</Text>
-        <Text style={styles.headerSubtitle}>
-          Keep track of your thoughts and ideas
-        </Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Notes</Text>
+          <Text style={styles.headerSubtitle}>
+            Keep track of your thoughts and ideas
+          </Text>
+        </View>
       </View>
 
       {/* Main Content Container - Gray Parent Card */}
@@ -1395,6 +1397,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
   header: {
     backgroundColor: "transparent",
     paddingTop: 60,
@@ -1402,7 +1409,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 25,
     fontWeight: "bold",
     color: "#ffffff",
     marginBottom: 8,
@@ -1411,6 +1418,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#ffffff",
     opacity: 0.9,
+    top:7
   },
   contentContainer: {
     flex: 1,

@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Switch } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Switch,
+  TouchableOpacity,
+  Image,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
+import * as ImagePicker from "expo-image-picker";
 import {
   Card,
   Title,
@@ -23,6 +32,8 @@ import { useTheme } from "../context/ThemeContext";
 import { useSecurity } from "../context/SecurityContext";
 import { useSecurityNotice } from "../context/SecurityNoticeContext";
 import { useAuth } from "../context/AuthContext";
+// TODO: Uncomment when database connection is fixed
+// import ApiService from "../services/api";
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
@@ -92,12 +103,163 @@ const SettingsScreen = () => {
   const [confirmPinInput, setConfirmPinInput] = useState("");
   const [pinStep, setPinStep] = useState("pin");
   const [localSecurityNotice, setLocalSecurityNotice] = useState(true);
+  const [profileImage, setProfileImage] = useState(null);
+  const [isImagePickerVisible, setIsImagePickerVisible] = useState(false);
 
   useEffect(() => {
     loadSettings();
     loadDataUsage();
     loadDataRetention();
+    loadProfileImage();
   }, []);
+
+  const loadProfileImage = async () => {
+    try {
+      // TODO: Database integration when connection is fixed
+      // Try to load from database first
+      // if (user?.id) {
+      //   try {
+      //     const response = await ApiService.getUserProfileImage();
+      //     if (response.success && response.profileImage) {
+      //       setProfileImage(response.profileImage);
+      //       // Also save to AsyncStorage for offline access
+      //       await AsyncStorage.setItem("profileImage", response.profileImage);
+      //       return;
+      //     }
+      //   } catch (dbError) {
+      //     console.error("Failed to load from database:", dbError);
+      //     // Continue with AsyncStorage fallback
+      //   }
+      // }
+
+      // Load from AsyncStorage for now
+      const savedImage = await AsyncStorage.getItem("profileImage");
+      if (savedImage) {
+        setProfileImage(savedImage);
+      }
+    } catch (error) {
+      console.error("Error loading profile image:", error);
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setProfileImage(imageUri);
+
+        // Save to AsyncStorage for immediate use
+        await AsyncStorage.setItem("profileImage", imageUri);
+
+        // TODO: Database integration when connection is fixed
+        // Save to database when available
+        // if (user?.id) {
+        //   try {
+        //     await ApiService.updateUserProfileImage(imageUri);
+        //     showSnackbar(
+        //       "Profile picture saved to database successfully!",
+        //       "success"
+        //     );
+        //   } catch (dbError) {
+        //     console.error("Failed to save to database:", dbError);
+        //     // Continue with AsyncStorage fallback
+        //   }
+        // }
+
+        showSnackbar("Profile picture updated successfully!", "success");
+      }
+    } catch (error) {
+      showSnackbar(
+        "Failed to update profile picture. Please try again.",
+        "error"
+      );
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        showSnackbar("Camera permission is required to take a photo.", "error");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setProfileImage(imageUri);
+
+        // Save to AsyncStorage for immediate use
+        await AsyncStorage.setItem("profileImage", imageUri);
+
+        // TODO: Database integration when connection is fixed
+        // Save to database when available
+        // if (user?.id) {
+        //   try {
+        //     await ApiService.updateUserProfileImage(imageUri);
+        //     showSnackbar(
+        //       "Profile picture saved to database successfully!",
+        //       "success"
+        //     );
+        //   } catch (dbError) {
+        //     console.error("Failed to save to database:", dbError);
+        //     // Continue with AsyncStorage fallback
+        //   }
+        // }
+
+        showSnackbar("Profile picture updated successfully!", "success");
+      }
+    } catch (error) {
+      showSnackbar("Failed to take photo. Please try again.", "error");
+    }
+  };
+
+  const showImagePickerOptions = () => {
+    setIsImagePickerVisible(true);
+  };
+
+  const removeProfileImage = async () => {
+    try {
+      setProfileImage(null);
+
+      // Remove from AsyncStorage
+      await AsyncStorage.removeItem("profileImage");
+
+      // TODO: Database integration when connection is fixed
+      // Remove from database when available
+      // if (user?.id) {
+      //   try {
+      //     await ApiService.removeUserProfileImage();
+      //     showSnackbar(
+      //       "Profile picture removed from database successfully!",
+      //       "success"
+      //     );
+      //   } catch (dbError) {
+      //     console.error("Failed to remove from database:", dbError);
+      //     // Continue with AsyncStorage fallback
+      //   }
+      // }
+
+      showSnackbar("Profile picture removed successfully!", "success");
+    } catch (error) {
+      showSnackbar(
+        "Failed to remove profile picture. Please try again.",
+        "error"
+      );
+    }
+  };
 
   useEffect(() => {
     if (showSecurityNotice !== undefined) {
@@ -406,10 +568,36 @@ const SettingsScreen = () => {
   return (
     <LinearGradient colors={["#4CAF50", "#2196F3"]} style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <Text style={styles.headerSubtitle}>
-          {isLoading ? "Loading..." : "Manage your preferences"}
-        </Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>Settings</Text>
+            {/* <Text style={styles.headerSubtitle}>
+              {isLoading ? "Loading..." : "Manage your preferences"}
+            </Text> */}
+          </View>
+          <TouchableOpacity
+            style={styles.profileImageContainer}
+            onPress={showImagePickerOptions}
+          >
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View style={styles.profileInitials}>
+                <Text style={styles.profileInitialsText}>
+                  {user?.username
+                    ? user.username.substring(0, 2).toUpperCase()
+                    : "U"}
+                </Text>
+              </View>
+            )}
+            <View style={styles.editIconContainer}>
+              <MaterialIcons name="edit" size={12} color="#ffffff" />
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View
@@ -1270,6 +1458,81 @@ const SettingsScreen = () => {
             </Modal>
           </Portal>
 
+          <Portal>
+            <Modal
+              visible={isImagePickerVisible}
+              onDismiss={() => setIsImagePickerVisible(false)}
+              contentContainerStyle={styles.modalContainer}
+            >
+              <Card style={styles.modalCard}>
+                <Card.Content>
+                  <Title style={styles.modalTitle}>
+                    Update Profile Picture
+                  </Title>
+                  <Text style={styles.modalSubtitle}>
+                    Choose how you want to update your profile picture
+                  </Text>
+
+                  <View style={styles.imagePickerButtons}>
+                    <Button
+                      mode="contained"
+                      onPress={() => {
+                        takePhoto();
+                        setIsImagePickerVisible(false);
+                      }}
+                      style={styles.imagePickerButton}
+                      buttonColor="#4CAF50"
+                      textColor="#FFFFFF"
+                      icon="camera"
+                    >
+                      Take Photo
+                    </Button>
+                    <Button
+                      mode="contained"
+                      onPress={() => {
+                        pickImage();
+                        setIsImagePickerVisible(false);
+                      }}
+                      style={styles.imagePickerButton}
+                      buttonColor="#2196F3"
+                      textColor="#FFFFFF"
+                      icon="image"
+                    >
+                      Choose from Gallery
+                    </Button>
+                    {profileImage && (
+                      <Button
+                        mode="outlined"
+                        onPress={() => {
+                          removeProfileImage();
+                          setIsImagePickerVisible(false);
+                        }}
+                        style={styles.imagePickerButton}
+                        textColor="#F44336"
+                        outlineColor="#F44336"
+                        icon="delete"
+                      >
+                        Remove Picture
+                      </Button>
+                    )}
+                  </View>
+
+                  <View style={styles.modalButtons}>
+                    <Button
+                      mode="outlined"
+                      onPress={() => setIsImagePickerVisible(false)}
+                      style={styles.modalButton}
+                      textColor={theme.colors.textSecondary}
+                      outlineColor={theme.colors.border}
+                    >
+                      Cancel
+                    </Button>
+                  </View>
+                </Card.Content>
+              </Card>
+            </Modal>
+          </Portal>
+
           <Snackbar
             visible={snackbarVisible}
             onDismiss={hideSnackbar}
@@ -1300,9 +1563,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  headerLeft: {
+    flex: 1,
+  },
   header: {
     backgroundColor: "transparent",
-    paddingTop: 60,
+    paddingTop: 50,
     paddingBottom: 30,
     paddingHorizontal: 20,
   },
@@ -1311,11 +1582,48 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#ffffff",
     marginBottom: 8,
+    top: 7,
   },
-  headerSubtitle: {
-    fontSize: 16,
+  profileImageContainer: {
+    position: "relative",
+    marginLeft: 15,
+    bottom: 15,
+  },
+  profileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  profileInitials: {
+    width: 60,
+    height: 60,
+    borderRadius: 50,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  profileInitialsText: {
+    fontSize: 18,
+    fontWeight: "bold",
     color: "#ffffff",
-    opacity: 0.9,
+    letterSpacing: 1,
+  },
+  editIconContainer: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    backgroundColor: "#2196F3",
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#ffffff",
   },
   card: {
     margin: 10,
@@ -1443,15 +1751,6 @@ const styles = StyleSheet.create({
   themeButton: {
     minWidth: 50,
   },
-  setupCard: {
-    margin: 10,
-    marginTop: 5,
-    marginBottom: 15,
-    elevation: 4,
-    borderRadius: 12,
-    backgroundColor: "#f8f9fa",
-  },
-
   modalContainer: {
     flex: 1,
     justifyContent: "center",
@@ -1488,12 +1787,19 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
   },
+  imagePickerButtons: {
+    marginBottom: 20,
+    gap: 15,
+  },
+  imagePickerButton: {
+    marginBottom: 10,
+  },
   contentContainer: {
     flex: 1,
     backgroundColor: "#f5f5f5",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    marginTop: -20,
+    marginTop: -30,
     paddingTop: 20,
     paddingBottom: 0,
     shadowColor: "#000",

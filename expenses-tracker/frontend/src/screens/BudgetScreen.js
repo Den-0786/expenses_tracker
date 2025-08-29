@@ -601,8 +601,8 @@ const BudgetScreen = () => {
                   {
                     color: (() => {
                       const oneThird = budget / 3;
-                      if (remaining < oneThird) return "#E53935"; // Red if less than 1/3
-                      return "#FBC02D"; // Gold (default)
+                      if (remaining < oneThird) return "#E53935"; 
+                      return "#FBC02D"; 
                     })(),
                   },
                 ]}
@@ -670,8 +670,10 @@ const BudgetScreen = () => {
         locations={[0, 1]}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Budget Management</Text>
-          <Text style={styles.headerSubtitle}>Track your spending limits</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Budget Mgt</Text>
+            <Text style={styles.headerSubtitle}>Track your spending limits</Text>
+          </View>
         </View>
 
         <View
@@ -1026,6 +1028,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
   header: {
     backgroundColor: "transparent",
     paddingTop: 60,
@@ -1033,15 +1040,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 25,
     fontWeight: "bold",
     color: "#ffffff",
     marginBottom: 8,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: "#ffffff",
     opacity: 0.9,
+    top:7
   },
   contentContainer: {
     flex: 1,
