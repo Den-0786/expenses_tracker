@@ -12,7 +12,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 
 const SignInScreen = ({ navigation }) => {
-  const [pin, setPin] = useState("1234");
+  const [pin, setPin] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -105,12 +105,8 @@ const SignInScreen = ({ navigation }) => {
     }
   };
 
-  const dismissKeyboard = () => {
-    Keyboard.dismiss();
-  };
-
   return (
-    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <LinearGradient
         colors={["#4CAF50", "#2196F3"]}
         style={styles.container}
@@ -121,12 +117,11 @@ const SignInScreen = ({ navigation }) => {
           <View style={styles.header}>
             <MaterialIcons name="lock" size={80} color="#FFFFFF" />
             <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to access your account</Text>
+            <Text style={styles.subtitle}>Enter your PIN to sign in</Text>
           </View>
 
           <View style={styles.formContainer}>
             <View style={styles.inputContainer}>
-              <Text style={styles.pinLabel}>Enter Your PIN</Text>
               <TextInput
                 mode="outlined"
                 value={pin}
@@ -137,8 +132,8 @@ const SignInScreen = ({ navigation }) => {
                 activeOutlineColor="#FFFFFF"
                 textColor="#FFFFFF"
                 placeholderTextColor="rgba(255,255,255,0.7)"
-                keyboardType="numeric"
                 secureTextEntry
+                keyboardType="numeric"
                 maxLength={6}
                 left={
                   <TextInput.Icon icon="lock" color="rgba(255,255,255,0.7)" />

@@ -14,6 +14,8 @@ import { useAuth } from "../context/AuthContext";
 const SignUpScreen = ({ navigation }) => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const { signUp } = useAuth();
@@ -21,6 +23,10 @@ const SignUpScreen = ({ navigation }) => {
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  };
+
+  const validatePin = (pin) => {
+    return pin.length >= 4;
   };
 
   const handleSignUp = async () => {
@@ -41,9 +47,24 @@ const SignUpScreen = ({ navigation }) => {
       return;
     }
 
+    if (!pin.trim()) {
+      setError("Please enter a PIN");
+      return;
+    }
+
+    if (!validatePin(pin.trim())) {
+      setError("PIN must be at least 4 characters long");
+      return;
+    }
+
+    if (pin !== confirmPin) {
+      setError("PINs do not match");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const result = await signUp(username.trim(), "email", email.trim());
+      const result = await signUp(username.trim(), email.trim(), pin.trim());
       if (result.success) {
         navigation.replace("MainTabs");
       } else {
@@ -119,12 +140,61 @@ const SignUpScreen = ({ navigation }) => {
               />
             </View>
 
+            <View style={styles.inputContainer}>
+              <TextInput
+                mode="outlined"
+                value={pin}
+                onChangeText={setPin}
+                placeholder="Create a PIN (min 4 characters)"
+                style={styles.input}
+                outlineColor="rgba(255,255,255,0.5)"
+                activeOutlineColor="#FFFFFF"
+                textColor="#FFFFFF"
+                placeholderTextColor="rgba(255,255,255,0.7)"
+                secureTextEntry
+                keyboardType="numeric"
+                maxLength={6}
+                left={
+                  <TextInput.Icon icon="lock" color="rgba(255,255,255,0.7)" />
+                }
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <TextInput
+                mode="outlined"
+                value={confirmPin}
+                onChangeText={setConfirmPin}
+                placeholder="Confirm your PIN"
+                style={styles.input}
+                outlineColor="rgba(255,255,255,0.5)"
+                activeOutlineColor="#FFFFFF"
+                textColor="#FFFFFF"
+                placeholderTextColor="rgba(255,255,255,0.7)"
+                secureTextEntry
+                keyboardType="numeric"
+                maxLength={6}
+                left={
+                  <TextInput.Icon
+                    icon="lock-check"
+                    color="rgba(255,255,255,0.7)"
+                  />
+                }
+              />
+            </View>
+
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <Button
               mode="contained"
               onPress={handleSignUp}
-              disabled={!username.trim() || !email.trim() || isLoading}
+              disabled={
+                !username.trim() ||
+                !email.trim() ||
+                !pin.trim() ||
+                !confirmPin.trim() ||
+                isLoading
+              }
               loading={isLoading}
               style={styles.signUpButton}
               buttonColor="#4CAF50"
@@ -166,11 +236,11 @@ const styles = StyleSheet.create({
     marginBottom: 50,
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "bold",
     color: "#FFFFFF",
     marginTop: 20,
-    marginBottom: 10,
+    marginBottom: 1,
     textAlign: "center",
   },
   subtitle: {
@@ -185,7 +255,7 @@ const styles = StyleSheet.create({
   },
 
   inputContainer: {
-    marginBottom: 35,
+    marginBottom: 20,
   },
   inputSubtitle: {
     fontSize: 14,
@@ -205,7 +275,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   signUpButton: {
-    marginTop: 35,
+    marginTop: 15,
     borderRadius: 12,
     paddingVertical: 8,
   },

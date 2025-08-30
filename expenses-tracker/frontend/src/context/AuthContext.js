@@ -34,25 +34,45 @@ export const AuthProvider = ({ children }) => {
         setUser(parsedUser);
         setIsAuthenticated(true);
         setHasCompletedOnboarding(onboardingStatus === "true");
+      } else {
+        // No user data found, user is not authenticated
+        setUser(null);
+        setIsAuthenticated(false);
+        setHasCompletedOnboarding(false);
       }
     } catch (error) {
       console.error("Error checking auth status:", error);
+      // On error, assume user is not authenticated
+      setUser(null);
+      setIsAuthenticated(false);
+      setHasCompletedOnboarding(false);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const signUp = async (username, authMethod, email) => {
+  const userExists = async () => {
+    try {
+      const userData = await AsyncStorage.getItem("user");
+      return !!userData;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const signUp = async (username, email, pin) => {
     try {
       const newUser = {
         id: Date.now().toString(),
         username,
         email,
-        authMethod,
         createdAt: new Date().toISOString(),
       };
 
+      // Store user data and PIN
       await AsyncStorage.setItem("user", JSON.stringify(newUser));
+      await AsyncStorage.setItem("userPin", pin);
+
       setUser(newUser);
       setIsAuthenticated(true);
       setHasCompletedOnboarding(false);
@@ -67,17 +87,20 @@ export const AuthProvider = ({ children }) => {
   const signIn = async (pin) => {
     try {
       const storedPin = await AsyncStorage.getItem("userPin");
+      const userData = await AsyncStorage.getItem("user");
 
-      // Development mode: Allow "1234" as default PIN if no stored PIN exists
-      if (!storedPin && pin === "1234") {
-        // Set the default PIN for future use
-        await AsyncStorage.setItem("userPin", "1234");
-        setIsAuthenticated(true);
-        return { success: true };
+      if (!storedPin || !userData) {
+        return {
+          success: false,
+          error: "No account found. Please sign up first.",
+        };
       }
 
       if (storedPin === pin) {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
         setIsAuthenticated(true);
+        setHasCompletedOnboarding(parsedUser.hasCompletedOnboarding || false);
         return { success: true };
       } else {
         return { success: false, error: "Invalid PIN" };
@@ -114,14 +137,46 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
+      // Only clear authentication state, keep user account data
+      // This allows users to sign back in with the same account
+      await AsyncStorage.removeItem("onboardingCompleted");
+
+      // Clear authentication state
+      setUser(null);
+      setIsAuthenticated(false);
+      setHasCompletedOnboarding(false);
+
+      // Note: We keep "user" and "userPin" in AsyncStorage
+      // so the user can sign back in with the same account
+    } catch (error) {
+      console.error("Error during sign out:", error);
+    }
+  };
+
+  const updateUser = async (updatedUserData) => {
+    try {
+      const updatedUser = { ...user, ...updatedUserData };
+      await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating user:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const deleteAccount = async () => {
+    try {
       await AsyncStorage.removeItem("user");
       await AsyncStorage.removeItem("userPin");
       await AsyncStorage.removeItem("onboardingCompleted");
       setUser(null);
       setIsAuthenticated(false);
       setHasCompletedOnboarding(false);
+      return { success: true };
     } catch (error) {
-      console.error("Error during sign out:", error);
+      console.error("Error deleting account:", error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -135,6 +190,9 @@ export const AuthProvider = ({ children }) => {
     setPin,
     completeOnboarding,
     signOut,
+    userExists,
+    updateUser,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -76,7 +76,7 @@ const SettingsScreen = () => {
     forceReset,
     ensureEnabled,
   } = useSecurityNotice();
-  const { signOut, user } = useAuth();
+  const { signOut, user, updateUser, deleteAccount } = useAuth();
 
   const [userSettings, setUserSettings] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -105,6 +105,11 @@ const SettingsScreen = () => {
   const [localSecurityNotice, setLocalSecurityNotice] = useState(true);
   const [profileImage, setProfileImage] = useState(null);
   const [isImagePickerVisible, setIsImagePickerVisible] = useState(false);
+  const [profileEditMode, setProfileEditMode] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    username: user?.username || "",
+    email: user?.email || "",
+  });
 
   useEffect(() => {
     loadSettings();
@@ -511,19 +516,18 @@ const SettingsScreen = () => {
       await resetSecurity();
       await cancelAllNotifications();
 
-      await AsyncStorage.removeItem("user");
-      await AsyncStorage.removeItem("userPin");
-      await AsyncStorage.removeItem("onboardingCompleted");
-      await AsyncStorage.removeItem("securityEnabled");
-      await AsyncStorage.removeItem("biometricEnabled");
-      await AsyncStorage.removeItem("autoLockEnabled");
-      await AsyncStorage.removeItem("autoLockTimeout");
+      // Use the deleteAccount function from AuthContext
+      const result = await deleteAccount();
 
-      showSnackbar("App reset complete! Please restart the app.", "success");
+      if (result.success) {
+        showSnackbar("App reset complete! Please restart the app.", "success");
 
-      setTimeout(() => {
-        navigation.replace("SignUp");
-      }, 2000);
+        setTimeout(() => {
+          navigation.replace("SignUp");
+        }, 2000);
+      } else {
+        showSnackbar("Failed to reset app. Please try again.", "error");
+      }
     } catch (error) {
       showSnackbar("Failed to reset app. Please try again.", "error");
     }
@@ -563,6 +567,133 @@ const SettingsScreen = () => {
       monthly: "Monthly",
     };
     return labels[frequency] || frequency;
+  };
+
+  const handleProfileEdit = () => {
+    setProfileEditMode(true);
+    setProfileForm({
+      username: user?.username || "",
+      email: user?.email || "",
+    });
+  };
+
+  const handleProfileCancel = async () => {
+    setProfileEditMode(false);
+    await loadSettings(); // Reload settings to revert profile form
+  };
+
+  const handleProfileSave = async () => {
+    if (!profileForm.username) {
+      showSnackbar("Username cannot be empty.", "error");
+      return;
+    }
+    if (!profileForm.email || !profileForm.email.includes("@")) {
+      showSnackbar("Please enter a valid email address.", "error");
+      return;
+    }
+
+    try {
+      // Update user profile using AuthContext
+      const result = await updateUser({
+        username: profileForm.username.trim(),
+        email: profileForm.email.trim(),
+      });
+
+      if (result.success) {
+        showSnackbar("Profile updated successfully!", "success");
+        setProfileEditMode(false);
+      } else {
+        showSnackbar("Failed to update profile", "error");
+      }
+    } catch (error) {
+      showSnackbar("Failed to save profile. Please try again.", "error");
+    }
+  };
+
+  const handlePinChange = () => {
+    setPinStep("pin");
+    setPinInput("");
+    setConfirmPinInput("");
+    setPinSetupVisible(true);
+  };
+
+  const handleCurrencyChange = async (currency) => {
+    try {
+      await AsyncStorage.setItem("defaultCurrency", currency);
+      setDefaultCurrency(currency);
+      setShowCurrencyModal(false);
+      showSnackbar(`Default currency set to ${currency}`, "success");
+    } catch (error) {
+      showSnackbar("Failed to update currency", "error");
+    }
+  };
+
+  const handlePaymentMethodChange = async (method) => {
+    try {
+      await AsyncStorage.setItem("defaultPaymentMethod", method);
+      setDefaultPaymentMethod(method);
+      setShowPaymentMethodModal(false);
+      showSnackbar(`Default payment method set to ${method}`, "success");
+    } catch (error) {
+      showSnackbar("Failed to update payment method", "error");
+    }
+  };
+
+  const handleStartOfWeekChange = async (day) => {
+    try {
+      await AsyncStorage.setItem("startOfWeek", day);
+      setStartOfWeek(day);
+      setShowStartOfWeekModal(false);
+      showSnackbar(`Start of week set to ${day}`, "success");
+    } catch (error) {
+      showSnackbar("Failed to update start of week", "error");
+    }
+  };
+
+  const loadAppPreferences = async () => {
+    try {
+      const currency = await AsyncStorage.getItem("defaultCurrency");
+      const paymentMethod = await AsyncStorage.getItem("defaultPaymentMethod");
+      const weekStart = await AsyncStorage.getItem("startOfWeek");
+      
+      if (currency) setDefaultCurrency(currency);
+      if (paymentMethod) setDefaultPaymentMethod(paymentMethod);
+      if (weekStart) setStartOfWeek(weekStart);
+    } catch (error) {
+      console.error("Error loading app preferences:", error);
+    }
+  };
+
+  const handleManageCategories = () => {
+    setShowCategoriesModal(true);
+  };
+
+  const handleManagePaymentMethods = () => {
+    setShowPaymentMethodsModal(true);
+  };
+
+  const handleHelpCenter = () => {
+    setShowHelpModal(true);
+  };
+
+  const handleContactUs = () => {
+    setShowContactModal(true);
+  };
+
+  const handleTutorial = () => {
+    setShowTutorialModal(true);
+  };
+
+  const handleSendFeedback = () => {
+    setShowFeedbackModal(true);
+  };
+
+  const handlePrivacyPolicy = () => {
+    setShowPrivacyModal(true);
+  };
+
+  const handleTermsOfService = () => {
+    setShowTermsModal(true);
   };
 
   return (
@@ -915,41 +1046,104 @@ const SettingsScreen = () => {
               <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
                 Account Settings
               </Title>
-              <List.Item
-                title="Username"
-                description={user?.username || "Not set"}
-                left={(props) => <List.Icon {...props} icon="account" />}
-                right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
-                    Edit
-                  </Button>
-                )}
-              />
-              <Divider style={styles.itemDivider} />
-              <List.Item
-                title="Email"
-                description={user?.email || "Not set"}
-                left={(props) => <List.Icon {...props} icon="email" />}
-                right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
-                    Edit
-                  </Button>
-                )}
-              />
-              <Divider style={styles.itemDivider} />
-              <List.Item
-                title="Authentication Method"
-                description={user?.authMethod || "PIN"}
-                left={(props) => (
-                  <List.Icon {...props} icon="account-multiple" />
-                )}
-                right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
-                    Change
-                  </Button>
-                )}
-              />
+
+              {profileEditMode ? (
+                <View>
+                  <TextInput
+                    label="Username"
+                    value={profileForm.username}
+                    onChangeText={(text) =>
+                      setProfileForm({ ...profileForm, username: text })
+                    }
+                    mode="outlined"
+                    style={styles.input}
+                    left={<TextInput.Icon icon="account" />}
+                  />
+
+                  <TextInput
+                    label="Email"
+                    value={profileForm.email}
+                    onChangeText={(text) =>
+                      setProfileForm({ ...profileForm, email: text })
+                    }
+                    mode="outlined"
+                    style={styles.input}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    left={<TextInput.Icon icon="email" />}
+                  />
+
+                  <View style={styles.editButtons}>
+                    <Button
+                      mode="outlined"
+                      onPress={handleProfileCancel}
+                      style={styles.editButton}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      mode="contained"
+                      onPress={handleProfileSave}
+                      style={styles.editButton}
+                    >
+                      Save Changes
+                    </Button>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <List.Item
+                    title="Username"
+                    description={user?.username || "Not set"}
+                    left={(props) => <List.Icon {...props} icon="account" />}
+                    right={() => (
+                      <Button
+                        mode="outlined"
+                        compact
+                        onPress={handleProfileEdit}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  />
+                  <Divider style={styles.itemDivider} />
+                  <List.Item
+                    title="Email"
+                    description={user?.email || "Not set"}
+                    left={(props) => <List.Icon {...props} icon="email" />}
+                    right={() => (
+                      <Button
+                        mode="outlined"
+                        compact
+                        onPress={handleProfileEdit}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  />
+                  <Divider style={styles.itemDivider} />
+                  <List.Item
+                    title="Authentication Method"
+                    description="PIN"
+                    left={(props) => <List.Icon {...props} icon="lock" />}
+                    right={() => (
+                      <Button mode="outlined" compact onPress={handlePinChange}>
+                        Change PIN
+                      </Button>
+                    )}
+                  />
+                </>
+              )}
+
               <Divider style={styles.divider} />
+
+              <Text style={styles.infoText}>
+                Sign Out: Temporarily sign out, your account data is preserved.
+              </Text>
+              <Text style={styles.infoText}>
+                Delete Account: Permanently removes all your data and account.
+              </Text>
+
               <Button
                 mode="outlined"
                 onPress={handleSignOut}
@@ -957,6 +1151,17 @@ const SettingsScreen = () => {
                 textColor="#F44336"
               >
                 Sign Out
+              </Button>
+
+              <View style={styles.divider} />
+
+              <Button
+                mode="outlined"
+                onPress={handleResetApp}
+                style={styles.dangerButton}
+                textColor="#FF9800"
+              >
+                Delete Account & Reset App
               </Button>
             </Card.Content>
           </Card>
@@ -968,9 +1173,10 @@ const SettingsScreen = () => {
               </Title>
               <List.Item
                 title="Default Currency"
+                description={defaultCurrency}
                 left={(props) => <List.Icon {...props} icon="currency-usd" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={() => setShowCurrencyModal(true)}>
                     Change
                   </Button>
                 )}
@@ -978,9 +1184,10 @@ const SettingsScreen = () => {
               <Divider style={styles.itemDivider} />
               <List.Item
                 title="Default Payment Method"
+                description={defaultPaymentMethod}
                 left={(props) => <List.Icon {...props} icon="credit-card" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={() => setShowPaymentMethodModal(true)}>
                     Change
                   </Button>
                 )}
@@ -1023,9 +1230,10 @@ const SettingsScreen = () => {
               <Divider style={styles.itemDivider} />
               <List.Item
                 title="Start of Week"
+                description={startOfWeek.charAt(0).toUpperCase() + startOfWeek.slice(1)}
                 left={(props) => <List.Icon {...props} icon="view-week" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={() => setShowStartOfWeekModal(true)}>
                     Change
                   </Button>
                 )}
@@ -1237,7 +1445,7 @@ const SettingsScreen = () => {
                       <List.Icon {...props} icon="shield-account" />
                     )}
                     right={() => (
-                      <Button mode="outlined" compact onPress={() => {}}>
+                      <Button mode="outlined" compact onPress={handlePrivacyPolicy}>
                         View
                       </Button>
                     )}
@@ -1251,7 +1459,7 @@ const SettingsScreen = () => {
                       <List.Icon {...props} icon="file-document" />
                     )}
                     right={() => (
-                      <Button mode="outlined" compact onPress={() => {}}>
+                      <Button mode="outlined" compact onPress={handleTermsOfService}>
                         View
                       </Button>
                     )}
@@ -1270,7 +1478,7 @@ const SettingsScreen = () => {
                 title="Manage Categories"
                 left={(props) => <List.Icon {...props} icon="tag-multiple" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={handleManageCategories}>
                     Manage
                   </Button>
                 )}
@@ -1282,7 +1490,7 @@ const SettingsScreen = () => {
                   <List.Icon {...props} icon="credit-card-multiple" />
                 )}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={handleManagePaymentMethods}>
                     Manage
                   </Button>
                 )}
@@ -1299,7 +1507,7 @@ const SettingsScreen = () => {
                 title="Help Center"
                 left={(props) => <List.Icon {...props} icon="help-circle" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={handleHelpCenter}>
                     Open
                   </Button>
                 )}
@@ -1309,7 +1517,7 @@ const SettingsScreen = () => {
                 title="Contact Us"
                 left={(props) => <List.Icon {...props} icon="message" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={handleContactUs}>
                     Contact
                   </Button>
                 )}
@@ -1319,7 +1527,7 @@ const SettingsScreen = () => {
                 title="Tutorial"
                 left={(props) => <List.Icon {...props} icon="play-circle" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={handleTutorial}>
                     Replay
                   </Button>
                 )}
@@ -1329,7 +1537,7 @@ const SettingsScreen = () => {
                 title="Send Feedback"
                 left={(props) => <List.Icon {...props} icon="comment-text" />}
                 right={() => (
-                  <Button mode="outlined" compact onPress={() => {}}>
+                  <Button mode="outlined" compact onPress={handleSendFeedback}>
                     Send
                   </Button>
                 )}
@@ -1844,6 +2052,13 @@ const styles = StyleSheet.create({
   },
   securityNoticeResetButton: {
     alignSelf: "center",
+  },
+  infoText: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 10,
+    marginBottom: 10,
+    textAlign: "center",
   },
 });
 

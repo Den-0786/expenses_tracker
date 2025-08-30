@@ -9,8 +9,13 @@ const { width, height } = Dimensions.get("window");
 
 const SplashScreen = () => {
   const navigation = useNavigation();
-  const { isAuthenticated, hasCompletedOnboarding, user, isLoading } =
-    useAuth();
+  const {
+    isAuthenticated,
+    hasCompletedOnboarding,
+    user,
+    isLoading,
+    userExists,
+  } = useAuth();
 
   const [currentPhase, setCurrentPhase] = useState("dots");
   const [countdown, setCountdown] = useState(10);
@@ -27,36 +32,46 @@ const SplashScreen = () => {
 
     const animateDots = () => {
       Animated.sequence([
+        // First dot
         Animated.timing(dot1Opacity, {
           toValue: 1,
-          duration: 600,
+          duration: 400,
           useNativeDriver: true,
         }),
+        // Second dot
         Animated.timing(dot2Opacity, {
           toValue: 1,
-          duration: 600,
+          duration: 400,
           useNativeDriver: true,
         }),
+        // Third dot
         Animated.timing(dot3Opacity, {
           toValue: 1,
-          duration: 600,
+          duration: 400,
           useNativeDriver: true,
         }),
-        Animated.timing(dot1Opacity, {
-          toValue: 0.3,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(dot2Opacity, {
-          toValue: 0.3,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(dot3Opacity, {
-          toValue: 0.3,
-          duration: 600,
-          useNativeDriver: true,
-        }),
+        // Pause with all dots visible
+        Animated.delay(300),
+        // Fade all dots out together
+        Animated.parallel([
+          Animated.timing(dot1Opacity, {
+            toValue: 0.3,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot2Opacity, {
+            toValue: 0.3,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot3Opacity, {
+            toValue: 0.3,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]),
+        // Pause with all dots dim
+        Animated.delay(200),
       ]).start(() => animateDots());
     };
 
@@ -87,7 +102,24 @@ const SplashScreen = () => {
       } else if (isAuthenticated && !hasCompletedOnboarding) {
         navigation.replace("MainTabs");
       } else {
-        navigation.navigate("SignUp");
+        // Check if user exists to determine navigation
+        const checkExistingUser = async () => {
+          try {
+            const exists = await userExists();
+            if (exists) {
+              // User exists, direct to SignIn
+              navigation.navigate("SignIn");
+            } else {
+              // No user exists, direct to SignUp
+              navigation.navigate("SignUp");
+            }
+          } catch (error) {
+            // If there's an error, default to SignUp
+            navigation.navigate("SignUp");
+          }
+        };
+
+        checkExistingUser();
       }
     }
   }, [
@@ -97,6 +129,7 @@ const SplashScreen = () => {
     hasCompletedOnboarding,
     navigation,
     hasNavigated,
+    userExists,
   ]);
 
   return (
@@ -185,6 +218,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: "#FFFFFF",
     marginHorizontal: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   countdownContainer: {
     alignItems: "center",
