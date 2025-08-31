@@ -170,7 +170,7 @@ const SettingsScreen = () => {
 
   // Expandable sections state
   const [expandedSections, setExpandedSections] = useState({
-    appPreferences: true, // Start with App Preferences expanded
+    appPreferences: false,
     paymentSettings: false,
     security: false,
     notifications: false,
@@ -441,7 +441,12 @@ const SettingsScreen = () => {
     try {
       const usage = await getDataUsage();
       setDataUsage(usage);
-    } catch (error) {}
+    } catch (error) {
+      showSnackbar(
+        error?.message || "Failed to load data usage. Please try again.",
+        "error"
+      );
+    }
   };
 
   const loadDataRetention = async () => {
@@ -619,7 +624,10 @@ const SettingsScreen = () => {
       setEditMode(false);
       showSnackbar("Settings updated successfully!", "success");
     } catch (error) {
-      showSnackbar("Failed to save settings. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to save settings. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -629,7 +637,10 @@ const SettingsScreen = () => {
       showSnackbar("Old data cleared successfully!", "success");
       loadDataUsage();
     } catch (error) {
-      showSnackbar("Failed to clear old data. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to clear old data. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -638,7 +649,10 @@ const SettingsScreen = () => {
       const data = await exportData();
       showSnackbar("Data exported successfully!", "success");
     } catch (error) {
-      showSnackbar("Failed to export data. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to export data. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -647,7 +661,10 @@ const SettingsScreen = () => {
       const data = await backupData();
       showSnackbar("Data backed up successfully!", "success");
     } catch (error) {
-      showSnackbar("Failed to backup data. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to backup data. Please try again.",
+        "error"
+      );
     }
   };
 

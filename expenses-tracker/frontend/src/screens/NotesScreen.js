@@ -19,6 +19,7 @@ import {
   Modal,
   TextInput,
   Searchbar,
+  Snackbar,
 } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -75,6 +76,21 @@ const NotesScreen = () => {
 
   const [activeInput, setActiveInput] = useState("body"); // "title" or "body"
 
+  // Snackbar state for network/user feedback
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarType, setSnackbarType] = useState("success");
+
+  const showSnackbar = (message, type = "info") => {
+    setSnackbarMessage(message);
+    setSnackbarType(type);
+    setSnackbarVisible(true);
+  };
+
+  const hideSnackbar = () => {
+    setSnackbarVisible(false);
+  };
+
   // Function to handle input focus and update active input
   const handleInputFocus = (inputType) => {
     setActiveInput(inputType);
@@ -93,11 +109,7 @@ const NotesScreen = () => {
       const notesData = await getNotes();
       setNotes(notesData || []);
     } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Failed to load notes",
-      });
+      showSnackbar(error?.message || "Failed to load notes", "error");
     }
   };
 
@@ -157,17 +169,9 @@ const NotesScreen = () => {
       setAddModalVisible(false);
       resetForm();
       loadNotes();
-      Toast.show({
-        type: "success",
-        text1: "Success",
-        text2: "Note saved successfully",
-      });
+      showSnackbar("Note saved successfully!", "success");
     } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Failed to save note",
-      });
+      showSnackbar(error?.message || "Failed to save note", "error");
     }
   };
 
@@ -208,17 +212,9 @@ const NotesScreen = () => {
       setSelectedNote(null);
       resetForm();
       loadNotes();
-      Toast.show({
-        type: "success",
-        text1: "Success",
-        text2: "Note updated successfully",
-      });
+      showSnackbar("Note updated successfully!", "success");
     } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Failed to update note",
-      });
+      showSnackbar(error?.message || "Failed to update note", "error");
     }
   };
 
@@ -238,11 +234,7 @@ const NotesScreen = () => {
         text2: "Note deleted successfully",
       });
     } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Failed to delete note",
-      });
+      showSnackbar(error?.message || "Failed to delete note", "error");
     }
   };
 
@@ -1386,7 +1378,25 @@ const NotesScreen = () => {
         color={theme.colors.onPrimary}
       />
 
-      {/* Toast Component */}
+      {/* Global Snackbar for network/user feedback */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={hideSnackbar}
+        duration={3000}
+        style={{
+          backgroundColor:
+            snackbarType === "success"
+              ? "#4CAF50"
+              : snackbarType === "error"
+                ? "#F44336"
+                : "#2196F3",
+        }}
+        action={{ label: "Dismiss", onPress: hideSnackbar }}
+      >
+        {snackbarMessage}
+      </Snackbar>
+
+      {/* Toast Component (retained for non-network quick tips) */}
       <Toast />
     </LinearGradient>
   );
@@ -1418,7 +1428,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#ffffff",
     opacity: 0.9,
-    top:7
+    top: 7,
   },
   contentContainer: {
     flex: 1,

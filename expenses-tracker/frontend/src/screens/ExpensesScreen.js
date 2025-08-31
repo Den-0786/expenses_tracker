@@ -49,7 +49,7 @@ const ExpensesScreen = () => {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
-  const [dateRange, setDateRange] = useState("month"); 
+  const [dateRange, setDateRange] = useState("month");
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarType, setSnackbarType] = useState("success");
@@ -93,14 +93,19 @@ const ExpensesScreen = () => {
           );
           break;
         default:
-          startDate = "2020-01-01"; 
+          startDate = "2020-01-01";
       }
 
       const expensesData = await getExpensesByDateRange(startDate, endDate);
       setExpenses(
         expensesData.sort((a, b) => new Date(b.date) - new Date(a.date))
       );
-    } catch (error) {}
+    } catch (error) {
+      showSnackbar(
+        error?.message || "Failed to load expenses. Please try again.",
+        "error"
+      );
+    }
   };
 
   const onRefresh = async () => {
@@ -173,7 +178,10 @@ const ExpensesScreen = () => {
 
       showSnackbar("Expense updated successfully!", "success");
     } catch (error) {
-      showSnackbar("Failed to update expense. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to update expense. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -203,7 +211,10 @@ const ExpensesScreen = () => {
 
       showSnackbar("Expense added successfully!", "success");
     } catch (error) {
-      showSnackbar("Failed to add expense. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to add expense. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -231,7 +242,10 @@ const ExpensesScreen = () => {
       setSelectedExpense(null);
       showSnackbar("Expense deleted successfully!", "success");
     } catch (error) {
-      showSnackbar("Failed to delete expense. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to delete expense. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -758,7 +772,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     opacity: 0.9,
     textAlign: "right",
-    top:7
+    top: 7,
   },
   contentContainer: {
     flex: 1,

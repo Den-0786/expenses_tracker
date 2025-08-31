@@ -25,22 +25,56 @@ class ApiService {
   async request(endpoint, options = {}) {
     try {
       const url = `${this.baseURL}${endpoint}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       const config = {
-        headers: this.getHeaders(),
+        method: options.method || "GET",
+        headers: { Accept: "application/json", ...this.getHeaders() },
+        signal: controller.signal,
         ...options,
       };
 
-      const response = await fetch(url, config);
+      const response = await fetch(url, config).finally(() =>
+        clearTimeout(timeoutId)
+      );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || `HTTP error! status: ${response.status}`
-        );
+        let message = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData && (errorData.message || errorData.error)) {
+            message = errorData.message || errorData.error;
+          }
+        } catch (_) {
+          try {
+            const text = await response.text();
+            if (text) message = text;
+          } catch (_) {}
+        }
+        throw new Error(message);
       }
 
-      return await response.json();
+      // Try JSON first, fallback to text
+      try {
+        return await response.json();
+      } catch (_) {
+        const text = await response.text();
+        return text ? { success: true, data: text } : { success: true };
+      }
     } catch (error) {
+      if (error.name === "AbortError") {
+        throw new Error("Network timeout. Please try again.");
+      }
+      // React Native fetch throws TypeError on network failure
+      if (
+        error instanceof TypeError ||
+        (typeof error.message === "string" &&
+          (error.message.includes("Network request failed") ||
+            error.message.includes("Failed to fetch")))
+      ) {
+        throw new Error("Network unavailable. Please check your connection.");
+      }
       throw error;
     }
   }

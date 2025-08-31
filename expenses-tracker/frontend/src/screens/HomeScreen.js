@@ -126,7 +126,12 @@ const HomeScreen = () => {
       );
       const yearExp = await getExpensesByDateRange(yearStart, yearEnd);
       setYearlyExpenses(yearExp);
-    } catch (error) {}
+    } catch (error) {
+      showSnackbar(
+        error?.message || "Failed to load dashboard data. Please try again.",
+        "error"
+      );
+    }
   };
 
   const onRefresh = async () => {
@@ -253,7 +258,12 @@ const HomeScreen = () => {
         monthly: previousMonthlyTotal,
         yearly: previousYearlyTotal,
       });
-    } catch (error) {}
+    } catch (error) {
+      showSnackbar(
+        error?.message || "Failed to calculate spending. Please try again.",
+        "error"
+      );
+    }
   };
 
   const calculateTotal = (expenses) => {

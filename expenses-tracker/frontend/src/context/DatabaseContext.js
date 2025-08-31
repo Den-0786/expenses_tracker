@@ -86,32 +86,10 @@ export const DatabaseProvider = ({ children }) => {
     } catch (error) {
       // If no token provided, user is not authenticated yet
       if (error.message && error.message.includes("No token provided")) {
-        return {
-          theme: "light",
-          language: "en",
-          currency: "USD",
-          notifications: {
-            daily: true,
-            weekly: true,
-            monthly: true,
-          },
-          autoBackup: true,
-          dataRetention: 365,
-        };
+        return null;
       }
       console.error("Error getting user settings:", error);
-      return {
-        theme: "light",
-        language: "en",
-        currency: "USD",
-        notifications: {
-          daily: true,
-          weekly: true,
-          monthly: true,
-        },
-        autoBackup: true,
-        dataRetention: 365,
-      };
+      return null;
     }
   };
 
@@ -406,6 +384,7 @@ export const DatabaseProvider = ({ children }) => {
     } catch (error) {
       // If no token provided, user is not authenticated yet
       if (error.message && error.message.includes("No token provided")) {
+        console.log("User not authenticated yet, returning empty budgets");
         return [];
       }
       console.error("Error getting all budgets:", error);
@@ -608,26 +587,8 @@ export const DatabaseProvider = ({ children }) => {
       const overview = await ApiService.getDashboardOverview();
       return overview;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return {
-          totalExpenses: 0,
-          totalIncome: 0,
-          balance: 0,
-          monthlyBudget: 0,
-          spentThisMonth: 0,
-          remainingBudget: 0,
-        };
-      }
       console.error("Error getting dashboard overview:", error);
-      return {
-        totalExpenses: 0,
-        totalIncome: 0,
-        balance: 0,
-        monthlyBudget: 0,
-        spentThisMonth: 0,
-        remainingBudget: 0,
-      };
+      return null;
     }
   };
 
@@ -636,26 +597,8 @@ export const DatabaseProvider = ({ children }) => {
       const analytics = await ApiService.getDashboardAnalytics(period);
       return analytics;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return {
-          period: period,
-          totalSpent: 0,
-          totalEarned: 0,
-          netAmount: 0,
-          topCategories: [],
-          spendingTrend: [],
-        };
-      }
       console.error("Error getting dashboard analytics:", error);
-      return {
-        period: period,
-        totalSpent: 0,
-        totalEarned: 0,
-        netAmount: 0,
-        topCategories: [],
-        spendingTrend: [],
-      };
+      return null;
     }
   };
 
@@ -664,22 +607,8 @@ export const DatabaseProvider = ({ children }) => {
       const comparison = await ApiService.getBudgetComparison();
       return comparison;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return {
-          currentMonth: 0,
-          previousMonth: 0,
-          difference: 0,
-          percentageChange: 0,
-        };
-      }
       console.error("Error getting budget comparison:", error);
-      return {
-        currentMonth: 0,
-        previousMonth: 0,
-        difference: 0,
-        percentageChange: 0,
-      };
+      return null;
     }
   };
 
@@ -689,12 +618,8 @@ export const DatabaseProvider = ({ children }) => {
       const trends = await ApiService.getSpendingTrends(period, months);
       return trends;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return [];
-      }
       console.error("Error getting spending trends:", error);
-      return [];
+      return null;
     }
   };
 
@@ -711,12 +636,8 @@ export const DatabaseProvider = ({ children }) => {
       );
       return breakdown;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return [];
-      }
       console.error("Error getting category breakdown:", error);
-      return [];
+      return null;
     }
   };
 
@@ -725,24 +646,8 @@ export const DatabaseProvider = ({ children }) => {
       const progress = await ApiService.getBudgetProgress(period);
       return progress;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return {
-          period: period,
-          totalBudget: 0,
-          spent: 0,
-          remaining: 0,
-          percentageUsed: 0,
-        };
-      }
       console.error("Error getting budget progress:", error);
-      return {
-        period: period,
-        totalBudget: 0,
-        spent: 0,
-        remaining: 0,
-        percentageUsed: 0,
-      };
+      return null;
     }
   };
 
@@ -768,22 +673,8 @@ export const DatabaseProvider = ({ children }) => {
       const status = await ApiService.getOnboardingStatus();
       return status;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return {
-          isCompleted: false,
-          currentStep: 1,
-          totalSteps: 5,
-          completedSteps: [],
-        };
-      }
       console.error("Error getting onboarding status:", error);
-      return {
-        isCompleted: false,
-        currentStep: 1,
-        totalSteps: 5,
-        completedSteps: [],
-      };
+      return null;
     }
   };
 
@@ -802,22 +693,8 @@ export const DatabaseProvider = ({ children }) => {
       const summary = await ApiService.getOnboardingSummary();
       return summary;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return {
-          totalSteps: 5,
-          completedSteps: 0,
-          remainingSteps: 5,
-          progress: 0,
-        };
-      }
       console.error("Error getting onboarding summary:", error);
-      return {
-        totalSteps: 5,
-        completedSteps: 0,
-        remainingSteps: 5,
-        progress: 0,
-      };
+      return null;
     }
   };
 
@@ -837,26 +714,8 @@ export const DatabaseProvider = ({ children }) => {
       const stats = await ApiService.getStatistics();
       return stats;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return {
-          totalExpenses: 0,
-          totalIncome: 0,
-          totalCategories: 0,
-          totalNotes: 0,
-          totalBudgets: 0,
-          totalPaymentMethods: 0,
-        };
-      }
       console.error("Error getting statistics:", error);
-      return {
-        totalExpenses: 0,
-        totalIncome: 0,
-        totalCategories: 0,
-        totalNotes: 0,
-        totalBudgets: 0,
-        totalPaymentMethods: 0,
-      };
+      return null;
     }
   };
 
@@ -873,13 +732,27 @@ export const DatabaseProvider = ({ children }) => {
   const getDataUsage = async () => {
     try {
       const usage = await ApiService.getDataUsage();
-      return usage;
+      // Backend returns { success, dataUsage: {...} }. Normalize shape for UI.
+      return (
+        usage?.dataUsage ||
+        usage || {
+          totalRecords: 0,
+          databaseSize: "0 records",
+          lastBackup: null,
+          categories: 0,
+          expenses: 0,
+          income: 0,
+          notes: 0,
+          budgets: 0,
+          paymentMethods: 0,
+        }
+      );
     } catch (error) {
-      // If no token provided, user is not authenticated yet
+      // If no token, provide a safe default object instead of null
       if (error.message && error.message.includes("No token provided")) {
         return {
           totalRecords: 0,
-          totalSize: 0,
+          databaseSize: "0 records",
           lastBackup: null,
           categories: 0,
           expenses: 0,
@@ -892,7 +765,7 @@ export const DatabaseProvider = ({ children }) => {
       console.error("Error getting data usage:", error);
       return {
         totalRecords: 0,
-        totalSize: 0,
+        databaseSize: "0 records",
         lastBackup: null,
         categories: 0,
         expenses: 0,
@@ -919,6 +792,14 @@ export const DatabaseProvider = ({ children }) => {
       const result = await ApiService.clearOldData(days);
       return result;
     } catch (error) {
+      // If not authenticated, skip server clear but allow local reset flow to proceed
+      if (error.message && error.message.includes("No token provided")) {
+        return {
+          success: true,
+          message: "Skipped server clear (not authenticated)",
+          deleted: { expenses: 0, income: 0, notes: 0 },
+        };
+      }
       console.error("Error clearing old data:", error);
       throw error;
     }
@@ -929,20 +810,8 @@ export const DatabaseProvider = ({ children }) => {
       const settings = await ApiService.getNotificationSettings();
       return settings;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return {
-          daily: true,
-          weekly: true,
-          monthly: true,
-        };
-      }
       console.error("Error getting notification settings:", error);
-      return {
-        daily: true,
-        weekly: true,
-        monthly: true,
-      };
+      return null;
     }
   };
 
@@ -1037,10 +906,6 @@ export const DatabaseProvider = ({ children }) => {
       const image = await ApiService.getUserProfileImage();
       return image;
     } catch (error) {
-      // If no token provided, user is not authenticated yet
-      if (error.message && error.message.includes("No token provided")) {
-        return null;
-      }
       console.error("Error getting profile image:", error);
       return null;
     }

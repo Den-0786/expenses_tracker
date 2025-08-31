@@ -99,6 +99,10 @@ const IncomeScreen = () => {
       }
     } catch (error) {
       setIncome([]);
+      showSnackbar(
+        error?.message || "Failed to load income. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -167,7 +171,10 @@ const IncomeScreen = () => {
       setDeleteConfirmVisible(false);
       setSelectedIncome(null);
     } catch (error) {
-      showSnackbar("Failed to delete income. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to delete income. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -194,7 +201,10 @@ const IncomeScreen = () => {
       await loadIncome();
       showSnackbar("Income updated successfully!", "success");
     } catch (error) {
-      showSnackbar("Failed to update income. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to update income. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -236,7 +246,10 @@ const IncomeScreen = () => {
 
       showSnackbar("Income added successfully!", "success");
     } catch (error) {
-      showSnackbar("Failed to add income. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to add income. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -822,7 +835,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     opacity: 0.9,
     textAlign: "right",
-    top:7
+    top: 7,
   },
   contentContainer: {
     flex: 1,

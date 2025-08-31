@@ -65,7 +65,12 @@ const BudgetScreen = () => {
     try {
       const savedBudgets = await getAllBudgets();
       setBudgets(savedBudgets);
-    } catch (error) {}
+    } catch (error) {
+      showSnackbar(
+        error?.message || "Failed to load budgets. Please try again.",
+        "error"
+      );
+    }
   };
 
   const calculateCurrentSpending = async () => {
@@ -172,7 +177,12 @@ const BudgetScreen = () => {
       });
 
       generateBudgetInsights();
-    } catch (error) {}
+    } catch (error) {
+      showSnackbar(
+        error?.message || "Failed to calculate spending. Please try again.",
+        "error"
+      );
+    }
   };
 
   const showSnackbar = (message, type = "info") => {
@@ -365,7 +375,10 @@ const BudgetScreen = () => {
 
       await calculateCurrentSpending();
     } catch (error) {
-      showSnackbar("Failed to update budgets. Please try again.", "error");
+      showSnackbar(
+        error?.message || "Failed to update budgets. Please try again.",
+        "error"
+      );
     }
   };
 
