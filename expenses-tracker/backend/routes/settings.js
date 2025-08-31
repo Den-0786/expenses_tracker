@@ -352,4 +352,132 @@ router.delete("/account", authenticateToken, async (req, res) => {
   }
 });
 
+// Data Management Endpoints
+router.get("/data-usage", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const [expenses, income, notes, categories, paymentMethods] = await Promise.all([
+      prisma.expense.count({ where: { userId } }),
+      prisma.income.count({ where: { userId } }),
+      prisma.note.count({ where: { userId } }),
+      prisma.category.count({ where: { userId } }),
+      prisma.paymentMethod.count({ where: { userId } })
+    ]);
+
+    const totalRecords = expenses + income + notes + categories + paymentMethods;
+    const databaseSize = `${totalRecords} records`;
+
+    res.json({
+      success: true,
+      dataUsage: {
+        totalRecords,
+        databaseSize,
+        expenses,
+        income,
+        notes,
+        categories,
+        paymentMethods
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Internal server error",
+      message: "Failed to get data usage"
+    });
+  }
+});
+
+router.post("/backup", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const [expenses, income, notes, categories, paymentMethods, preferences] = await Promise.all([
+      prisma.expense.findMany({ where: { userId } }),
+      prisma.income.findMany({ where: { userId } }),
+      prisma.note.findMany({ where: { userId } }),
+      prisma.category.findMany({ where: { userId } }),
+      prisma.paymentMethod.count({ where: { userId } }),
+      prisma.userPreference.findMany({ where: { userId } })
+    ]);
+
+    const backupData = {
+      backupDate: new Date().toISOString(),
+      userId,
+      data: {
+        expenses,
+        income,
+        notes,
+        categories,
+        paymentMethods,
+        preferences
+      }
+    };
+
+    res.json({
+      success: true,
+      message: "Backup created successfully",
+      backupData
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Internal server error",
+      message: "Failed to create backup"
+    });
+  }
+});
+
+router.post("/clear-old-data", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { days } = req.body;
+
+    if (!days || typeof days !== "number") {
+      return res.status(400).json({
+        error: "Invalid password",
+        message: "Days must be a number"
+      });
+    }
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const [deletedExpenses, deletedIncome, deletedNotes] = await Promise.all([
+      prisma.expense.deleteMany({
+        where: {
+          userId,
+          date: { lt: cutoffDate }
+        }
+      }),
+      prisma.income.deleteMany({
+        where: {
+          userId,
+          date: { lt: cutoffDate }
+        }
+      }),
+      prisma.note.deleteMany({
+        where: {
+          userId,
+          createdAt: { lt: cutoffDate }
+        }
+      })
+    ]);
+
+    res.json({
+      success: true,
+      message: "Old data cleared successfully",
+      deleted: {
+        expenses: deletedExpenses.count,
+        income: deletedIncome.count,
+        notes: deletedNotes.count
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Internal server error",
+      message: "Failed to clear old data"
+    });
+  }
+});
+
 module.exports = router;

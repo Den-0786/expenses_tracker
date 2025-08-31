@@ -44,7 +44,6 @@ const ExpandableSection = ({
   showDivider = true,
 }) => {
   const handleToggle = () => {
-    console.log("ExpandableSection onToggle called for:", title);
     onToggle();
   };
 

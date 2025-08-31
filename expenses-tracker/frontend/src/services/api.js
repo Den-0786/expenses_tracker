@@ -322,6 +322,18 @@ class ApiService {
     return this.request("/settings");
   }
 
+  // Notification Settings
+  async getNotificationSettings() {
+    return this.request("/notifications/settings");
+  }
+
+  async updateNotificationSetting(type, enabled) {
+    return this.request("/notifications/settings", {
+      method: "PUT",
+      body: JSON.stringify({ type, enabled }),
+    });
+  }
+
   async updateProfile(profileData) {
     return this.request("/settings/profile", {
       method: "PUT",
@@ -348,6 +360,26 @@ class ApiService {
     return this.request("/settings/account", {
       method: "DELETE",
       body: JSON.stringify({ confirmPassword }),
+    });
+  }
+
+  // Data Management
+  async getDataUsage() {
+    return this.request("/settings/data-usage");
+  }
+
+  async exportData() {
+    return this.request("/settings/export");
+  }
+
+  async backupData() {
+    return this.request("/settings/backup");
+  }
+
+  async clearOldData(days) {
+    return this.request("/settings/clear-old-data", {
+      method: "POST",
+      body: JSON.stringify({ days }),
     });
   }
 

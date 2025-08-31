@@ -25,6 +25,14 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "OK",
+    message: "Expense Tracker API is running",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.get("/db-test", async (req, res) => {
   try {
     await prisma.$connect();
@@ -50,11 +58,14 @@ app.use("/api/income", require("./routes/income"));
 app.use("/api/budgets", require("./routes/budgets"));
 app.use("/api/notes", require("./routes/notes"));
 app.use("/api/categories", require("./routes/categories"));
+app.use("/api/payment-methods", require("./routes/payment-methods"));
+app.use("/api/preferences", require("./routes/preferences"));
 app.use("/api/onboarding", require("./routes/onboarding"));
 app.use("/api/dashboard", require("./routes/dashboard"));
 app.use("/api/settings", require("./routes/settings"));
 app.use("/api/search", require("./routes/search"));
 app.use("/api/analytics", require("./routes/analytics"));
+app.use("/api/notifications", require("./routes/notifications"));
 
 app.use((err, req, res, next) => {
   res.status(500).json({
@@ -83,6 +94,7 @@ process.on("SIGTERM", async () => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`📊 API Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔗 Database test: http://localhost:${PORT}/db-test`);
 });
 

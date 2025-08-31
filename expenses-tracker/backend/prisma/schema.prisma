@@ -24,6 +24,9 @@ model User {
   budgets             Budget[]
   notes               Note[]
   categories          Category[]
+  paymentMethods      PaymentMethod[]
+  preferences         UserPreference[]
+  notifications       Notification[]
 }
 
 model Category {
@@ -49,6 +52,7 @@ model Expense {
   date        DateTime  @default(now())
   description String?
   categoryId  Int?
+  paymentMethodId Int?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
@@ -56,6 +60,7 @@ model Expense {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
   category    Category? @relation(fields: [categoryId], references: [id])
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
 }
 
 model Income {
@@ -98,4 +103,47 @@ model Note {
   // Relations
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
+}
+
+model PaymentMethod {
+  id          Int       @id @default(autoincrement())
+  name        String
+  icon        String?
+  color       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  expenses    Expense[]
+}
+
+model UserPreference {
+  id          Int       @id @default(autoincrement())
+  key         String    // e.g., "defaultCurrency", "startOfWeek", "dataRetentionDays"
+  value       String    // The preference value
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  
+  @@unique([userId, key]) // Each user can have only one value per preference key
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  title     String
+  message   String
+  type      String   // "reminder", "summary", "alert", etc.
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
 }
