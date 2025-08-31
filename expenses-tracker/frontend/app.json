@@ -1,8 +1,9 @@
 {
   "expo": {
     "name": "Expenses Tracker",
-    "slug": "expenses-tracker",
+    "slug": "expense-tracker",
     "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#1E88E5",
@@ -10,19 +11,33 @@
       "backgroundColor": "#1E88E5",
       "barStyle": "light-content"
     },
-
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.denopoku.expensetracker",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#1E88E5"
-      }
+      },
+      "package": "com.denopoku.expensetracker"
     },
     "web": {
       "favicon": null
     },
-    "plugins": ["expo-font", "expo-sqlite"]
+    "plugins": [
+      "expo-font",
+      "expo-sqlite"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ceb6b4da-344d-4197-b160-889eaee37975"
+      }
+    }
   }
 }

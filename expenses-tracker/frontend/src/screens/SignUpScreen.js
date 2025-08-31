@@ -103,106 +103,111 @@ const SignUpScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.formContainer}>
-            <View style={styles.inputContainer}>
-              <TextInput
-                mode="outlined"
-                value={username}
-                onChangeText={setUsername}
-                placeholder="Enter your username"
-                style={styles.input}
-                outlineColor="rgba(255,255,255,0.5)"
-                activeOutlineColor="#FFFFFF"
-                textColor="#FFFFFF"
-                placeholderTextColor="rgba(255,255,255,0.7)"
-                left={
-                  <TextInput.Icon
-                    icon="account"
-                    color="rgba(255,255,255,0.7)"
-                  />
+            <View style={styles.cardWrapper}>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  mode="outlined"
+                  value={username}
+                  onChangeText={setUsername}
+                  placeholder="Enter your username"
+                  style={styles.input}
+                  outlineColor="rgba(255,255,255,0.5)"
+                  activeOutlineColor="#FFFFFF"
+                  textColor="#FFFFFF"
+                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  left={
+                    <TextInput.Icon
+                      icon="account"
+                      color="rgba(255,255,255,0.7)"
+                    />
+                  }
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <TextInput
+                  mode="outlined"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter your email"
+                  style={styles.input}
+                  outlineColor="rgba(255,255,255,0.5)"
+                  activeOutlineColor="#FFFFFF"
+                  textColor="#FFFFFF"
+                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  left={
+                    <TextInput.Icon
+                      icon="email"
+                      color="rgba(255,255,255,0.7)"
+                    />
+                  }
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <TextInput
+                  mode="outlined"
+                  value={pin}
+                  onChangeText={setPin}
+                  placeholder="Create a PIN (min 4 characters)"
+                  style={styles.input}
+                  outlineColor="rgba(255,255,255,0.5)"
+                  activeOutlineColor="#FFFFFF"
+                  textColor="#FFFFFF"
+                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  secureTextEntry
+                  keyboardType="numeric"
+                  maxLength={6}
+                  left={
+                    <TextInput.Icon icon="lock" color="rgba(255,255,255,0.7)" />
+                  }
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <TextInput
+                  mode="outlined"
+                  value={confirmPin}
+                  onChangeText={setConfirmPin}
+                  placeholder="Confirm your PIN"
+                  style={styles.input}
+                  outlineColor="rgba(255,255,255,0.5)"
+                  activeOutlineColor="#FFFFFF"
+                  textColor="#FFFFFF"
+                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  secureTextEntry
+                  keyboardType="numeric"
+                  maxLength={6}
+                  left={
+                    <TextInput.Icon
+                      icon="lock-check"
+                      color="rgba(255,255,255,0.7)"
+                    />
+                  }
+                />
+              </View>
+
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+              <Button
+                mode="contained"
+                onPress={handleSignUp}
+                disabled={
+                  !username.trim() ||
+                  !email.trim() ||
+                  !pin.trim() ||
+                  !confirmPin.trim() ||
+                  isLoading
                 }
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <TextInput
-                mode="outlined"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Enter your email"
-                style={styles.input}
-                outlineColor="rgba(255,255,255,0.5)"
-                activeOutlineColor="#FFFFFF"
+                loading={isLoading}
+                style={styles.signUpButton}
+                buttonColor="#4CAF50"
                 textColor="#FFFFFF"
-                placeholderTextColor="rgba(255,255,255,0.7)"
-                left={
-                  <TextInput.Icon icon="email" color="rgba(255,255,255,0.7)" />
-                }
-              />
+                labelStyle={styles.buttonLabel}
+              >
+                {isLoading ? "Creating Account..." : "Sign Up"}
+              </Button>
             </View>
-
-            <View style={styles.inputContainer}>
-              <TextInput
-                mode="outlined"
-                value={pin}
-                onChangeText={setPin}
-                placeholder="Create a PIN (min 4 characters)"
-                style={styles.input}
-                outlineColor="rgba(255,255,255,0.5)"
-                activeOutlineColor="#FFFFFF"
-                textColor="#FFFFFF"
-                placeholderTextColor="rgba(255,255,255,0.7)"
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={6}
-                left={
-                  <TextInput.Icon icon="lock" color="rgba(255,255,255,0.7)" />
-                }
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <TextInput
-                mode="outlined"
-                value={confirmPin}
-                onChangeText={setConfirmPin}
-                placeholder="Confirm your PIN"
-                style={styles.input}
-                outlineColor="rgba(255,255,255,0.5)"
-                activeOutlineColor="#FFFFFF"
-                textColor="#FFFFFF"
-                placeholderTextColor="rgba(255,255,255,0.7)"
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={6}
-                left={
-                  <TextInput.Icon
-                    icon="lock-check"
-                    color="rgba(255,255,255,0.7)"
-                  />
-                }
-              />
-            </View>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <Button
-              mode="contained"
-              onPress={handleSignUp}
-              disabled={
-                !username.trim() ||
-                !email.trim() ||
-                !pin.trim() ||
-                !confirmPin.trim() ||
-                isLoading
-              }
-              loading={isLoading}
-              style={styles.signUpButton}
-              buttonColor="#4CAF50"
-              textColor="#FFFFFF"
-              labelStyle={styles.buttonLabel}
-            >
-              {isLoading ? "Creating Account..." : "Sign Up"}
-            </Button>
           </View>
 
           <View style={styles.footer}>
@@ -251,7 +256,23 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: "100%",
-    marginBottom: 20,
+    marginBottom: 10,
+    marginTop:-27,
+  },
+  cardWrapper: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+    padding: 25,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
   inputContainer: {
@@ -275,7 +296,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   signUpButton: {
-    marginTop: 15,
+    marginTop: 10,
     borderRadius: 12,
     paddingVertical: 8,
   },
@@ -290,7 +311,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: -30,
-    marginBottom: 30,
+    marginBottom: 25,
   },
   footerText: {
     fontSize: 16,

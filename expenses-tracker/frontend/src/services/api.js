@@ -1,8 +1,8 @@
-const API_BASE_URL = "http://localhost:3000/api";
+import { API_CONFIG } from "../config/api";
 
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.baseURL = API_CONFIG.BASE_URL;
     this.token = null;
   }
 
@@ -41,7 +41,6 @@ class ApiService {
 
       return await response.json();
     } catch (error) {
-      console.error("API request failed:", error);
       throw error;
     }
   }
@@ -231,6 +230,60 @@ class ApiService {
 
   async deleteCategory(id) {
     return this.request(`/categories/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Payment Methods
+  async getPaymentMethods() {
+    return this.request("/payment-methods");
+  }
+
+  async createPaymentMethod(paymentMethodData) {
+    return this.request("/payment-methods", {
+      method: "POST",
+      body: JSON.stringify(paymentMethodData),
+    });
+  }
+
+  async updatePaymentMethod(id, paymentMethodData) {
+    return this.request(`/payment-methods/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(paymentMethodData),
+    });
+  }
+
+  async deletePaymentMethod(id) {
+    return this.request(`/payment-methods/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // User Preferences
+  async getUserPreferences() {
+    return this.request("/preferences");
+  }
+
+  async getUserPreference(key) {
+    return this.request(`/preferences/${key}`);
+  }
+
+  async setUserPreference(key, value) {
+    return this.request("/preferences", {
+      method: "POST",
+      body: JSON.stringify({ key, value }),
+    });
+  }
+
+  async updateUserPreference(key, value) {
+    return this.request(`/preferences/${key}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
+    });
+  }
+
+  async deleteUserPreference(key) {
+    return this.request(`/preferences/${key}`, {
       method: "DELETE",
     });
   }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
+import { AppState } from "react-native";
 
 const SecurityContext = createContext();
 
@@ -23,6 +24,7 @@ export const SecurityProvider = ({ children }) => {
   const [lockoutUntil, setLockoutUntil] = useState(null);
   const [autoLockEnabled, setAutoLockEnabled] = useState(true);
   const [autoLockTimeout, setAutoLockTimeout] = useState(5); // 5 minutes
+  const [autoLockOnLeave, setAutoLockOnLeave] = useState(0); // 0 = immediately, 1 = 1 min, 2 = 2 min, 3 = 3 min
 
   useEffect(() => {
     checkBiometricAvailability();
@@ -37,6 +39,33 @@ export const SecurityProvider = ({ children }) => {
       checkAppLockStatus();
     }
   }, [isSecurityEnabled]);
+
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === "background" || nextAppState === "inactive") {
+        if (isSecurityEnabled && autoLockOnLeave > 0) {
+          setTimeout(
+            () => {
+              if (AppState.currentState !== "active") {
+                setIsLocked(true);
+                setIsAuthenticated(false);
+              }
+            },
+            autoLockOnLeave * 60 * 1000
+          );
+        } else if (isSecurityEnabled && autoLockOnLeave === 0) {
+          setIsLocked(true);
+          setIsAuthenticated(false);
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange
+    );
+    return () => subscription?.remove();
+  }, [isSecurityEnabled, autoLockOnLeave]);
 
   const checkBiometricAvailability = async () => {
     try {
@@ -235,6 +264,17 @@ export const SecurityProvider = ({ children }) => {
     }
   };
 
+  const setAutoLockOnLeaveValue = async (delay) => {
+    try {
+      await AsyncStorage.setItem("autoLockOnLeave", delay.toString());
+      setAutoLockOnLeave(delay);
+      return true;
+    } catch (error) {
+      console.log("Error setting auto lock on leave:", error);
+      return false;
+    }
+  };
+
   const loadSecuritySettings = async () => {
     try {
       const securityEnabled = await AsyncStorage.getItem("securityEnabled");
@@ -242,6 +282,7 @@ export const SecurityProvider = ({ children }) => {
       const biometricEnabled = await AsyncStorage.getItem("biometricEnabled");
       const autoLockEnabled = await AsyncStorage.getItem("autoLockEnabled");
       const autoLockTimeout = await AsyncStorage.getItem("autoLockTimeout");
+      const autoLockOnLeave = await AsyncStorage.getItem("autoLockOnLeave");
 
       if (securityEnabled === "true") {
         setIsSecurityEnabled(true);
@@ -260,6 +301,10 @@ export const SecurityProvider = ({ children }) => {
 
         if (autoLockTimeout) {
           setAutoLockTimeout(parseInt(autoLockTimeout));
+        }
+
+        if (autoLockOnLeave) {
+          setAutoLockOnLeave(parseInt(autoLockOnLeave));
         }
 
         checkAppLockStatus();
@@ -298,6 +343,7 @@ export const SecurityProvider = ({ children }) => {
     isSecurityEnabled,
     autoLockEnabled,
     autoLockTimeout,
+    autoLockOnLeave,
     failedAttempts,
     lockoutUntil,
     isLockedOut: isLockedOut(),
@@ -311,6 +357,7 @@ export const SecurityProvider = ({ children }) => {
     toggleSecurity,
     toggleAutoLock,
     setAutoLockTimeout: setAutoLockTimeoutValue,
+    setAutoLockOnLeave: setAutoLockOnLeaveValue,
     resetSecurity,
     updateLastActiveTime,
   };

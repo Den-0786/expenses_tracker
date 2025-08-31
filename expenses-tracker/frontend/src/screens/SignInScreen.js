@@ -121,53 +121,55 @@ const SignInScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.formContainer}>
-            <View style={styles.inputContainer}>
-              <TextInput
-                mode="outlined"
-                value={pin}
-                onChangeText={handlePinChange}
-                placeholder="Enter your PIN"
-                style={styles.input}
-                outlineColor="rgba(255,255,255,0.5)"
-                activeOutlineColor="#FFFFFF"
-                textColor="#FFFFFF"
-                placeholderTextColor="rgba(255,255,255,0.7)"
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={6}
-                left={
-                  <TextInput.Icon icon="lock" color="rgba(255,255,255,0.7)" />
-                }
-              />
+            <View style={styles.cardWrapper}>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  mode="outlined"
+                  value={pin}
+                  onChangeText={handlePinChange}
+                  placeholder="Enter your PIN"
+                  style={styles.input}
+                  outlineColor="rgba(255,255,255,0.5)"
+                  activeOutlineColor="#FFFFFF"
+                  textColor="#FFFFFF"
+                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  secureTextEntry
+                  keyboardType="numeric"
+                  maxLength={6}
+                  left={
+                    <TextInput.Icon icon="lock" color="rgba(255,255,255,0.7)" />
+                  }
+                />
 
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
-              {successMessage ? (
-                <Text style={styles.successText}>{successMessage}</Text>
-              ) : null}
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                {successMessage ? (
+                  <Text style={styles.successText}>{successMessage}</Text>
+                ) : null}
+
+              </View>
 
               <Button
-                mode="text"
-                onPress={handleForgotPin}
-                textColor="rgba(255,255,255,0.8)"
-                labelStyle={styles.forgotPinText}
-                style={styles.forgotPinButton}
+                mode="contained"
+                onPress={handleSignIn}
+                disabled={!pin.trim() || isLoading}
+                loading={isLoading}
+                style={styles.signInButton}
+                buttonColor="#4CAF50"
+                textColor="#FFFFFF"
+                labelStyle={styles.buttonLabel}
               >
-                Forgot PIN?
+                {isLoading ? "Signing In..." : "Sign In"}
               </Button>
+              <Button
+                  mode="text"
+                  onPress={handleForgotPin}
+                  textColor="rgba(255,255,255,0.8)"
+                  labelStyle={styles.forgotPinText}
+                  style={styles.forgotPinButton}
+                >
+                  Forgot PIN?
+                </Button>
             </View>
-
-            <Button
-              mode="contained"
-              onPress={handleSignIn}
-              disabled={!pin.trim() || isLoading}
-              loading={isLoading}
-              style={styles.signInButton}
-              buttonColor="#4CAF50"
-              textColor="#FFFFFF"
-              labelStyle={styles.buttonLabel}
-            >
-              {isLoading ? "Signing In..." : "Sign In"}
-            </Button>
           </View>
 
           <View style={styles.footer}>
@@ -271,7 +273,22 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: "100%",
-    marginBottom: 20,
+    marginBottom: -10,
+  },
+  cardWrapper: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
   label: {
     fontSize: 16,
@@ -298,7 +315,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#FFFFFF",
     opacity: 0.8,
-    marginBottom: 15,
+    marginBottom: 20,
     textAlign: "center",
   },
   inputContainer: {
@@ -327,7 +344,7 @@ const styles = StyleSheet.create({
   },
 
   signInButton: {
-    marginTop: -15,
+    marginTop: -10,
     borderRadius: 12,
     paddingVertical: 12,
     width: "100%",
@@ -357,7 +374,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   forgotPinButton: {
-    marginTop: 20,
+    marginTop: -10,
     alignSelf: "center",
     paddingVertical: 8,
   },
