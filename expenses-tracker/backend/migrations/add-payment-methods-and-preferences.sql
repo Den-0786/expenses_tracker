@@ -1,6 +1,3 @@
--- Migration: Add PaymentMethod and UserPreference tables
--- Date: 2024-01-XX
--- Description: Adds support for user-defined payment methods and user preferences
 
 -- Add PaymentMethod table
 CREATE TABLE IF NOT EXISTS "PaymentMethod" (
@@ -46,20 +43,4 @@ CREATE INDEX IF NOT EXISTS "PaymentMethod_userId_idx" ON "PaymentMethod"("userId
 CREATE INDEX IF NOT EXISTS "UserPreference_userId_idx" ON "UserPreference"("userId");
 CREATE INDEX IF NOT EXISTS "Expense_paymentMethodId_idx" ON "Expense"("paymentMethodId");
 
--- Insert some default payment methods for existing users (optional)
--- This can be run manually if needed
-/*
-INSERT INTO "PaymentMethod" ("name", "icon", "color", "userId", "createdAt", "updatedAt")
-SELECT 
-    'Cash',
-    'cash',
-    '#4CAF50',
-    u.id,
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-FROM "User" u
-WHERE NOT EXISTS (
-    SELECT 1 FROM "PaymentMethod" pm 
-    WHERE pm."userId" = u.id AND pm."name" = 'Cash'
-);
-*/
+
