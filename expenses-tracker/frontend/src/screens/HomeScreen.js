@@ -85,7 +85,14 @@ const HomeScreen = () => {
       setUserSettings(settings);
 
       const savedBudgets = await getAllBudgets();
-      setBudgets(savedBudgets);
+      if (savedBudgets && typeof savedBudgets === "object") {
+        setBudgets({
+          daily: savedBudgets.daily || 0,
+          weekly: savedBudgets.weekly || 0,
+          monthly: savedBudgets.monthly || 0,
+          yearly: savedBudgets.yearly || 0,
+        });
+      }
 
       const today = format(new Date(), "yyyy-MM-dd");
       const todayExp = await getExpensesByDate(today);
@@ -250,7 +257,11 @@ const HomeScreen = () => {
   };
 
   const calculateTotal = (expenses) => {
-    return expenses.reduce((total, expense) => total + expense.amount, 0);
+    if (!expenses || !Array.isArray(expenses)) return 0;
+    return expenses.reduce(
+      (total, expense) => total + (expense?.amount || 0),
+      0
+    );
   };
 
   const calculateRemaining = () => {
@@ -355,7 +366,7 @@ const HomeScreen = () => {
   };
 
   const getBudgetProgress = (period) => {
-    const budget = budgets[period];
+    const budget = budgets?.[period] || 0;
     const spending = getCurrentExpensesTotal();
 
     if (budget === 0) return 0;
@@ -371,7 +382,8 @@ const HomeScreen = () => {
   };
 
   const getRemainingBudget = (period) => {
-    return Math.max(budgets[period] - getCurrentExpensesTotal(), 0);
+    const budget = budgets?.[period] || 0;
+    return Math.max(budget - getCurrentExpensesTotal(), 0);
   };
 
   const preparePieChartData = (expenses) => {
@@ -380,7 +392,7 @@ const HomeScreen = () => {
     expenses.forEach((expense) => {
       const category = expense.category || "General";
       categoryTotals[category] =
-        (categoryTotals[category] || 0) + expense.amount;
+        (categoryTotals[category] || 0) + (expense?.amount || 0);
     });
 
     const colors = [
@@ -408,7 +420,7 @@ const HomeScreen = () => {
 
     expenses.forEach((expense) => {
       const date = expense.date;
-      dailyTotals[date] = (dailyTotals[date] || 0) + expense.amount;
+      dailyTotals[date] = (dailyTotals[date] || 0) + (expense?.amount || 0);
     });
 
     const sortedDates = Object.keys(dailyTotals).sort();
@@ -585,7 +597,7 @@ const HomeScreen = () => {
                       { color: theme.colors.text },
                     ]}
                   >
-                    {Math.round(getCurrentBudgetProgress() * 100)}%
+                    {Math.round((getCurrentBudgetProgress() || 0) * 100)}%
                   </Text>
                 </View>
                 <View
@@ -598,7 +610,7 @@ const HomeScreen = () => {
                     style={[
                       styles.progressBar,
                       {
-                        width: `${Math.min(getCurrentBudgetProgress() * 100, 100)}%`,
+                        width: `${Math.min((getCurrentBudgetProgress() || 0) * 100, 100)}%`,
                         backgroundColor:
                           getCurrentBudgetStatus() === "critical"
                             ? "#F44336"
@@ -982,7 +994,7 @@ const HomeScreen = () => {
                         { color: theme.colors.primary },
                       ]}
                     >
-                      ${expense.amount.toFixed(2)}
+                      ${(expense?.amount || 0).toFixed(2)}
                     </Text>
                   </View>
                 ))
@@ -1100,7 +1112,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     opacity: 0.9,
     textAlign: "right",
-    top:7
+    top: 7,
   },
   contentContainer: {
     flex: 1,

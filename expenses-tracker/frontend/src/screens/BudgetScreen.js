@@ -41,10 +41,10 @@ const BudgetScreen = () => {
 
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({
-    daily: budgets.daily.toString(),
-    weekly: budgets.weekly.toString(),
-    monthly: budgets.monthly.toString(),
-    yearly: budgets.yearly.toString(),
+    daily: "0",
+    weekly: "0",
+    monthly: "0",
+    yearly: "0",
   });
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -601,8 +601,8 @@ const BudgetScreen = () => {
                   {
                     color: (() => {
                       const oneThird = budget / 3;
-                      if (remaining < oneThird) return "#E53935"; 
-                      return "#FBC02D"; 
+                      if (remaining < oneThird) return "#E53935";
+                      return "#FBC02D";
                     })(),
                   },
                 ]}
@@ -672,7 +672,9 @@ const BudgetScreen = () => {
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Budget Mgt</Text>
-            <Text style={styles.headerSubtitle}>Track your spending limits</Text>
+            <Text style={styles.headerSubtitle}>
+              Track your spending limits
+            </Text>
           </View>
         </View>
 
@@ -789,10 +791,10 @@ const BudgetScreen = () => {
                           onPress={() => {
                             setEditMode(false);
                             setEditForm({
-                              daily: budgets.daily.toString(),
-                              weekly: budgets.weekly.toString(),
-                              monthly: budgets.monthly.toString(),
-                              yearly: budgets.yearly.toString(),
+                              daily: (budgets.daily || 0).toString(),
+                              weekly: (budgets.weekly || 0).toString(),
+                              monthly: (budgets.monthly || 0).toString(),
+                              yearly: (budgets.yearly || 0).toString(),
                             });
                           }}
                           style={styles.editButton}
@@ -827,7 +829,7 @@ const BudgetScreen = () => {
                             ]}
                           >
                             $
-                            {isNaN(budgets.daily)
+                            {!budgets.daily || isNaN(budgets.daily)
                               ? "0.00"
                               : budgets.daily.toFixed(2)}
                           </Text>
@@ -856,7 +858,7 @@ const BudgetScreen = () => {
                             ]}
                           >
                             $
-                            {isNaN(budgets.weekly)
+                            {!budgets.weekly || isNaN(budgets.weekly)
                               ? "0.00"
                               : budgets.weekly.toFixed(2)}
                           </Text>
@@ -888,7 +890,7 @@ const BudgetScreen = () => {
                             ]}
                           >
                             $
-                            {isNaN(budgets.monthly)
+                            {!budgets.monthly || isNaN(budgets.monthly)
                               ? "0.00"
                               : budgets.monthly.toFixed(2)}
                           </Text>
@@ -917,7 +919,7 @@ const BudgetScreen = () => {
                             ]}
                           >
                             $
-                            {isNaN(budgets.yearly)
+                            {!budgets.yearly || isNaN(budgets.yearly)
                               ? "0.00"
                               : budgets.yearly.toFixed(2)}
                           </Text>
@@ -1049,7 +1051,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#ffffff",
     opacity: 0.9,
-    top:7
+    top: 7,
   },
   contentContainer: {
     flex: 1,

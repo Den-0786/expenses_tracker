@@ -424,9 +424,9 @@ const SettingsScreen = () => {
       if (settings) {
         setUserSettings(settings);
         setEditForm({
-          paymentFrequency: settings.payment_frequency,
-          paymentAmount: settings.payment_amount.toString(),
-          tithingPercentage: settings.tithing_percentage.toString(),
+          paymentFrequency: settings.payment_frequency || "monthly",
+          paymentAmount: (settings.payment_amount || "").toString(),
+          tithingPercentage: (settings.tithing_percentage || "10").toString(),
           tithingEnabled: settings.tithing_enabled === 1,
         });
       }
@@ -487,13 +487,11 @@ const SettingsScreen = () => {
   };
 
   const toggleSection = useCallback((sectionName) => {
-    console.log("Toggling section:", sectionName);
     setExpandedSections((prev) => {
       const newState = {
         ...prev,
         [sectionName]: !prev[sectionName],
       };
-      console.log("New expanded state:", newState);
       return newState;
     });
   }, []);
@@ -1383,7 +1381,7 @@ const SettingsScreen = () => {
               left={(props) => <List.Icon {...props} icon="bell" />}
               right={() => (
                 <Switch
-                  value={notificationSettings.daily}
+                  value={notificationSettings?.daily || false}
                   onValueChange={(value) =>
                     updateNotificationSetting("daily", value)
                   }
@@ -1397,7 +1395,7 @@ const SettingsScreen = () => {
               left={(props) => <List.Icon {...props} icon="view-week" />}
               right={() => (
                 <Switch
-                  value={notificationSettings.weekly}
+                  value={notificationSettings?.weekly || false}
                   onValueChange={(value) =>
                     updateNotificationSetting("weekly", value)
                   }
@@ -1411,7 +1409,7 @@ const SettingsScreen = () => {
               left={(props) => <List.Icon {...props} icon="calendar-month" />}
               right={() => (
                 <Switch
-                  value={notificationSettings.monthly}
+                  value={notificationSettings?.monthly || false}
                   onValueChange={(value) =>
                     updateNotificationSetting("monthly", value)
                   }

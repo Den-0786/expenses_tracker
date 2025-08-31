@@ -406,7 +406,6 @@ export const DatabaseProvider = ({ children }) => {
     } catch (error) {
       // If no token provided, user is not authenticated yet
       if (error.message && error.message.includes("No token provided")) {
-        console.log("User not authenticated yet, returning empty budgets");
         return [];
       }
       console.error("Error getting all budgets:", error);
