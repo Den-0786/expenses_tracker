@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
 import {
   Card,
   Title,
@@ -9,6 +15,8 @@ import {
   List,
   Switch,
   Snackbar,
+  Portal,
+  Modal,
 } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -46,6 +54,11 @@ const BudgetScreen = () => {
     monthly: "0",
     yearly: "0",
   });
+  const [singleEditMode, setSingleEditMode] = useState(false);
+  const [singleEditPeriod, setSingleEditPeriod] = useState("");
+  const [singleEditValue, setSingleEditValue] = useState("");
+  const [actionsModalVisible, setActionsModalVisible] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState("");
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarType, setSnackbarType] = useState("success");
@@ -357,6 +370,72 @@ const BudgetScreen = () => {
     setBudgetInsights(insights);
   };
 
+  const handleEditSingleBudget = (period) => {
+    setSingleEditPeriod(period);
+    setSingleEditValue(budgets[period]?.toString() || "0");
+    setSingleEditMode(true);
+  };
+
+  const handleResetSingleBudget = async (period) => {
+    try {
+      await saveBudget(period, 0);
+
+      setBudgets((prev) => ({
+        ...prev,
+        [period]: 0,
+      }));
+
+      showSnackbar(
+        `${period.charAt(0).toUpperCase() + period.slice(1)} budget reset to $0`,
+        "success"
+      );
+
+      await calculateCurrentSpending();
+    } catch (error) {
+      showSnackbar("Error resetting budget", "error");
+    }
+  };
+
+  const openActionsModal = (period) => {
+    setSelectedPeriod(period);
+    setActionsModalVisible(true);
+  };
+
+  const handleEditFromMenu = () => {
+    setActionsModalVisible(false);
+    handleEditSingleBudget(selectedPeriod);
+  };
+
+  const handleResetFromMenu = () => {
+    setActionsModalVisible(false);
+    handleResetSingleBudget(selectedPeriod);
+  };
+
+  const handleSaveSingleBudget = async () => {
+    try {
+      const amount = parseFloat(singleEditValue) || 0;
+      await saveBudget(singleEditPeriod, amount);
+
+      setBudgets((prev) => ({
+        ...prev,
+        [singleEditPeriod]: amount,
+      }));
+
+      setSingleEditMode(false);
+      showSnackbar(
+        `${singleEditPeriod.charAt(0).toUpperCase() + singleEditPeriod.slice(1)} budget updated successfully!`,
+        "success"
+      );
+
+      await calculateCurrentSpending();
+    } catch (error) {
+      showSnackbar(
+        error?.message || "Failed to update budget. Please try again.",
+        "error"
+      );
+    }
+  };
+
   const handleSaveBudgets = async () => {
     try {
       const daily = parseFloat(editForm.daily) || 0;
@@ -364,6 +443,7 @@ const BudgetScreen = () => {
       const monthly = parseFloat(editForm.monthly) || 0;
       const yearly = parseFloat(editForm.yearly) || 0;
 
+      // Save all budgets (including zero values to clear them)
       await saveBudget("daily", daily);
       await saveBudget("weekly", weekly);
       await saveBudget("monthly", monthly);
@@ -472,9 +552,11 @@ const BudgetScreen = () => {
                 {title}
               </Title>
             </View>
-            <Text style={[styles.budgetAmount, { color: theme.colors.text }]}>
-              ${isNaN(budget) ? "0.00" : budget.toFixed(2)}
-            </Text>
+            <View style={styles.budgetAmountContainer}>
+              <Text style={[styles.budgetAmount, { color: theme.colors.text }]}>
+                ${isNaN(budget) ? "0.00" : budget.toFixed(2)}
+              </Text>
+            </View>
           </View>
 
           <View style={styles.budgetProgress}>
@@ -835,6 +917,22 @@ const BudgetScreen = () => {
                             },
                           ]}
                         >
+                          <TouchableOpacity
+                            style={[
+                              styles.actionButton,
+                              {
+                                backgroundColor: theme.colors.surface,
+                                borderColor: theme.colors.border || "#e0e0e0",
+                              },
+                            ]}
+                            onPress={() => openActionsModal("daily")}
+                          >
+                            <MaterialIcons
+                              name="more-vert"
+                              size={20}
+                              color={theme.colors.textSecondary}
+                            />
+                          </TouchableOpacity>
                           <Text
                             style={[
                               styles.statValue,
@@ -864,6 +962,22 @@ const BudgetScreen = () => {
                             },
                           ]}
                         >
+                          <TouchableOpacity
+                            style={[
+                              styles.actionButton,
+                              {
+                                backgroundColor: theme.colors.surface,
+                                borderColor: theme.colors.border || "#e0e0e0",
+                              },
+                            ]}
+                            onPress={() => openActionsModal("weekly")}
+                          >
+                            <MaterialIcons
+                              name="more-vert"
+                              size={20}
+                              color={theme.colors.textSecondary}
+                            />
+                          </TouchableOpacity>
                           <Text
                             style={[
                               styles.statValue,
@@ -896,6 +1010,22 @@ const BudgetScreen = () => {
                             },
                           ]}
                         >
+                          <TouchableOpacity
+                            style={[
+                              styles.actionButton,
+                              {
+                                backgroundColor: theme.colors.surface,
+                                borderColor: theme.colors.border || "#e0e0e0",
+                              },
+                            ]}
+                            onPress={() => openActionsModal("monthly")}
+                          >
+                            <MaterialIcons
+                              name="more-vert"
+                              size={20}
+                              color={theme.colors.textSecondary}
+                            />
+                          </TouchableOpacity>
                           <Text
                             style={[
                               styles.statValue,
@@ -925,6 +1055,22 @@ const BudgetScreen = () => {
                             },
                           ]}
                         >
+                          <TouchableOpacity
+                            style={[
+                              styles.actionButton,
+                              {
+                                backgroundColor: theme.colors.surface,
+                                borderColor: theme.colors.border || "#e0e0e0",
+                              },
+                            ]}
+                            onPress={() => openActionsModal("yearly")}
+                          >
+                            <MaterialIcons
+                              name="more-vert"
+                              size={20}
+                              color={theme.colors.textSecondary}
+                            />
+                          </TouchableOpacity>
                           <Text
                             style={[
                               styles.statValue,
@@ -1006,6 +1152,121 @@ const BudgetScreen = () => {
             </View>
           </ScrollView>
         </View>
+
+        <Portal>
+          <Modal
+            visible={singleEditMode}
+            onDismiss={() => setSingleEditMode(false)}
+            contentContainerStyle={[
+              styles.modal,
+              {
+                backgroundColor: theme.colors.surface,
+                borderWidth: 2,
+                borderColor: "#90EE90",
+                marginTop: -80,
+              },
+            ]}
+          >
+            <View style={styles.modalContent}>
+              <Title style={[styles.modalTitle, { color: theme.colors.text }]}>
+                Edit{" "}
+                {singleEditPeriod.charAt(0).toUpperCase() +
+                  singleEditPeriod.slice(1)}{" "}
+                Budget
+              </Title>
+
+              <TextInput
+                label={`${singleEditPeriod.charAt(0).toUpperCase() + singleEditPeriod.slice(1)} Budget`}
+                value={singleEditValue}
+                onChangeText={setSingleEditValue}
+                keyboardType="numeric"
+                mode="outlined"
+                style={[
+                  styles.input,
+                  { backgroundColor: theme.colors.surface },
+                ]}
+                placeholder="0.00"
+                left={<TextInput.Affix text="$" />}
+              />
+
+              <View style={styles.modalButtons}>
+                <Button
+                  mode="outlined"
+                  onPress={() => setSingleEditMode(false)}
+                  style={styles.modalButton}
+                  textColor={theme.colors.text}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={handleSaveSingleBudget}
+                  style={styles.modalButton}
+                  buttonColor={theme.colors.primary}
+                  textColor={theme.colors.surface}
+                >
+                  Save
+                </Button>
+              </View>
+            </View>
+          </Modal>
+        </Portal>
+
+        <Portal>
+          <Modal
+            visible={actionsModalVisible}
+            onDismiss={() => setActionsModalVisible(false)}
+            contentContainerStyle={[
+              styles.actionsModal,
+              {
+                backgroundColor: theme.colors.surface,
+                borderWidth: 2,
+                borderColor: "#90EE90",
+              },
+            ]}
+          >
+            <Title
+              style={[styles.actionsModalTitle, { color: theme.colors.text }]}
+            >
+              {selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)}{" "}
+              Budget Actions
+            </Title>
+            <View style={styles.actionsList}>
+              <TouchableOpacity
+                style={[
+                  styles.actionItem,
+                  { borderBottomColor: theme.colors.border || "#e0e0e0" },
+                ]}
+                onPress={handleEditFromMenu}
+              >
+                <MaterialIcons
+                  name="edit"
+                  size={20}
+                  color={theme.colors.primary}
+                />
+                <Text style={[styles.actionText, { color: theme.colors.text }]}>
+                  Edit Budget
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.actionItem,
+                  { borderBottomColor: theme.colors.border || "#e0e0e0" },
+                ]}
+                onPress={handleResetFromMenu}
+              >
+                <MaterialIcons
+                  name="refresh"
+                  size={20}
+                  color={theme.colors.error}
+                />
+                <Text style={[styles.actionText, { color: theme.colors.text }]}>
+                  Reset to $0
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Modal>
+        </Portal>
 
         <Snackbar
           visible={snackbarVisible}
@@ -1167,32 +1428,73 @@ const styles = StyleSheet.create({
   statItem: {
     alignItems: "center",
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
     marginHorizontal: 6,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 16,
+    elevation: 3,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
     borderWidth: 1,
+    position: "relative",
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 6,
+    marginBottom: 8,
     textAlign: "center",
   },
+  actionButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    zIndex: 1,
+  },
+  actionsModal: {
+    padding: 20,
+    margin: 20,
+    borderRadius: 12,
+    maxWidth: 300,
+    alignSelf: "center",
+  },
+  actionsModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  actionsList: {
+    gap: 0,
+  },
+  actionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+  },
+  actionText: {
+    fontSize: 16,
+    marginLeft: 15,
+    fontWeight: "500",
+  },
   statLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
     textAlign: "center",
     textTransform: "uppercase",
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   budgetCard: {
     margin: 10,
@@ -1215,9 +1517,20 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginLeft: 10,
   },
+  budgetAmountContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   budgetAmount: {
     fontSize: 20,
     fontWeight: "bold",
+  },
+  editButton: {
+    minWidth: 60,
+  },
+  editButtonLabel: {
+    fontSize: 12,
   },
   budgetProgress: {
     marginBottom: 20,
@@ -1378,6 +1691,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     textAlign: "center",
+  },
+  modal: {
+    backgroundColor: "white",
+    padding: 20,
+    margin: 20,
+    borderRadius: 12,
+    elevation: 8,
+  },
+  modalContent: {
+    padding: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    gap: 10,
+  },
+  modalButton: {
+    flex: 1,
   },
 });
 

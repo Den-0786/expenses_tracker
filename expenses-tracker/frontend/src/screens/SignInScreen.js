@@ -145,7 +145,6 @@ const SignInScreen = ({ navigation }) => {
                 {successMessage ? (
                   <Text style={styles.successText}>{successMessage}</Text>
                 ) : null}
-
               </View>
 
               <Button
@@ -161,14 +160,14 @@ const SignInScreen = ({ navigation }) => {
                 {isLoading ? "Signing In..." : "Sign In"}
               </Button>
               <Button
-                  mode="text"
-                  onPress={handleForgotPin}
-                  textColor="rgba(255,255,255,0.8)"
-                  labelStyle={styles.forgotPinText}
-                  style={styles.forgotPinButton}
-                >
-                  Forgot PIN?
-                </Button>
+                mode="text"
+                onPress={handleForgotPin}
+                textColor="rgba(255,255,255,0.8)"
+                labelStyle={styles.forgotPinText}
+                style={styles.forgotPinButton}
+              >
+                Forgot PIN?
+              </Button>
             </View>
           </View>
 

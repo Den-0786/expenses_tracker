@@ -448,6 +448,39 @@ class ApiService {
   async getBudgetProgress(period = "month") {
     return this.request(`/analytics/budget-progress?period=${period}`);
   }
+
+  // Reports
+  async getBudgetAggregation(period = "current") {
+    return this.request(`/reports/budget-aggregation?period=${period}`);
+  }
+
+  async getWeeklyReport(weekStart = null) {
+    const url = weekStart
+      ? `/reports/weekly-report?weekStart=${weekStart}`
+      : "/reports/weekly-report";
+    return this.request(url);
+  }
+
+  async getMonthlyReport(month = null, year = null) {
+    let url = "/reports/monthly-report";
+    if (month && year) {
+      url += `?month=${month}&year=${year}`;
+    }
+    return this.request(url);
+  }
+
+  // Manual report generation
+  async generateWeeklyReport() {
+    return this.request("/reports/generate-weekly", {
+      method: "POST",
+    });
+  }
+
+  async generateMonthlyReport() {
+    return this.request("/reports/generate-monthly", {
+      method: "POST",
+    });
+  }
 }
 
 export default new ApiService();

@@ -113,7 +113,12 @@ const IncomeScreen = () => {
   };
 
   const filterIncome = () => {
-    let filtered = income;
+    if (!income || !Array.isArray(income)) {
+      setFilteredIncome([]);
+      return;
+    }
+
+    let filtered = [...income];
 
     if (searchQuery) {
       filtered = filtered.filter(
@@ -231,13 +236,13 @@ const IncomeScreen = () => {
     }
 
     try {
-      await addIncome(
-        amount,
-        newIncome.description,
-        "General",
-        newIncome.description,
-        format(new Date(), "yyyy-MM-dd")
-      );
+      await addIncome({
+        amount: amount,
+        description: newIncome.description,
+        category: "General",
+        source: newIncome.description,
+        date: format(new Date(), "yyyy-MM-dd"),
+      });
 
       setNewIncome({ amount: "", description: "" });
       setAddIncomeModalVisible(false);
@@ -275,7 +280,12 @@ const IncomeScreen = () => {
   };
 
   const getTotalAmount = () => {
-    if (!filteredIncome || filteredIncome.length === 0) return 0;
+    if (
+      !filteredIncome ||
+      !Array.isArray(filteredIncome) ||
+      filteredIncome.length === 0
+    )
+      return 0;
     return filteredIncome.reduce(
       (total, income) => total + (income.amount || 0),
       0
@@ -283,7 +293,7 @@ const IncomeScreen = () => {
   };
 
   const getUniqueCategories = () => {
-    if (!income || income.length === 0) return [];
+    if (!income || !Array.isArray(income) || income.length === 0) return [];
     const categories = [
       ...new Set(income.map((income) => income.category || "General")),
     ];
@@ -291,7 +301,12 @@ const IncomeScreen = () => {
   };
 
   const groupIncomeByDate = () => {
-    if (!filteredIncome || filteredIncome.length === 0) return {};
+    if (
+      !filteredIncome ||
+      !Array.isArray(filteredIncome) ||
+      filteredIncome.length === 0
+    )
+      return {};
     const grouped = {};
     filteredIncome.forEach((income) => {
       const date = income.date;
@@ -406,58 +421,60 @@ const IncomeScreen = () => {
               </Text>
             </View>
           ) : (
-            Object.entries(groupIncomeByDate()).map(([date, dateIncome]) => (
-              <View key={date} style={styles.dateGroup}>
-                <Text style={styles.dateHeader}>{getDateLabel(date)}</Text>
-                {dateIncome.map((income) => (
-                  <Card
-                    key={income.id}
-                    style={[
-                      styles.incomeCard,
-                      { backgroundColor: theme.colors.surface },
-                    ]}
-                  >
-                    <Card.Content>
-                      <View style={styles.incomeHeader}>
-                        <View style={styles.incomeLeft}>
-                          <View style={styles.incomeInfo}>
-                            <Text
+            Object.entries(groupIncomeByDate() || {}).map(
+              ([date, dateIncome]) => (
+                <View key={date} style={styles.dateGroup}>
+                  <Text style={styles.dateHeader}>{getDateLabel(date)}</Text>
+                  {(dateIncome || []).map((income) => (
+                    <Card
+                      key={income.id}
+                      style={[
+                        styles.incomeCard,
+                        { backgroundColor: theme.colors.surface },
+                      ]}
+                    >
+                      <Card.Content>
+                        <View style={styles.incomeHeader}>
+                          <View style={styles.incomeLeft}>
+                            <View style={styles.incomeInfo}>
+                              <Text
+                                style={[
+                                  styles.incomeDescription,
+                                  { color: theme.colors.text },
+                                ]}
+                              >
+                                {income.description}
+                              </Text>
+                              <Text style={styles.incomeAmount}>
+                                +GHC {income.amount.toFixed(2)}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={styles.incomeRight}>
+                            <TouchableOpacity
                               style={[
-                                styles.incomeDescription,
-                                { color: theme.colors.text },
+                                styles.actionButton,
+                                {
+                                  backgroundColor: theme.colors.surface,
+                                  borderColor: theme.colors.border || "#e0e0e0",
+                                },
                               ]}
+                              onPress={() => openActionsModal(income)}
                             >
-                              {income.description}
-                            </Text>
-                            <Text style={styles.incomeAmount}>
-                              +GHC {income.amount.toFixed(2)}
-                            </Text>
+                              <MaterialIcons
+                                name="more-vert"
+                                size={20}
+                                color={theme.colors.textSecondary}
+                              />
+                            </TouchableOpacity>
                           </View>
                         </View>
-                        <View style={styles.incomeRight}>
-                          <TouchableOpacity
-                            style={[
-                              styles.actionButton,
-                              {
-                                backgroundColor: theme.colors.surface,
-                                borderColor: theme.colors.border || "#e0e0e0",
-                              },
-                            ]}
-                            onPress={() => openActionsModal(income)}
-                          >
-                            <MaterialIcons
-                              name="more-vert"
-                              size={20}
-                              color={theme.colors.textSecondary}
-                            />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </Card.Content>
-                  </Card>
-                ))}
-              </View>
-            ))
+                      </Card.Content>
+                    </Card>
+                  ))}
+                </View>
+              )
+            )
           )}
         </ScrollView>
       </View>
@@ -920,8 +937,8 @@ const styles = StyleSheet.create({
   },
   incomeCard: {
     marginTop: 10,
-    marginLeft: 0,
-    marginRight: 0,
+    marginLeft: 16,
+    marginRight: 16,
     marginBottom: 0,
     elevation: 2,
     borderRadius: 8,

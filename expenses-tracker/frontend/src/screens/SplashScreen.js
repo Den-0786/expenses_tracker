@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Dimensions, Animated } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../context/AuthContext";
 
 const { width, height } = Dimensions.get("window");
@@ -14,6 +15,7 @@ const SplashScreen = () => {
     hasCompletedOnboarding,
     user,
     isLoading,
+    isSessionActive,
     userExists,
   } = useAuth();
 
@@ -72,12 +74,18 @@ const SplashScreen = () => {
         ]),
         // Pause with all dots dim
         Animated.delay(200),
-      ]).start(() => animateDots());
+      ]).start(() => {
+        // Continue animation loop
+        animateDots();
+      });
     };
 
+    // Start animation immediately
     animateDots();
 
-    return () => clearTimeout(dotsTimer);
+    return () => {
+      clearTimeout(dotsTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -97,17 +105,21 @@ const SplashScreen = () => {
   useEffect(() => {
     if (countdown === 0 && !isLoading && !hasNavigated) {
       setHasNavigated(true);
-      if (isAuthenticated && hasCompletedOnboarding) {
-        navigation.replace("MainTabs");
-      } else if (isAuthenticated && !hasCompletedOnboarding) {
+      if (isAuthenticated && isSessionActive) {
+        // User is properly authenticated with active session
         navigation.replace("MainTabs");
       } else {
-        // Check if user exists to determine navigation
+        // Check if user exists AND has active session to determine navigation
         const checkExistingUser = async () => {
           try {
             const exists = await userExists();
-            if (exists) {
-              // User exists, direct to SignIn
+            const sessionActive = await AsyncStorage.getItem("sessionActive");
+
+            if (exists && sessionActive === "true") {
+              // User exists and session is active, direct to MainTabs
+              navigation.replace("MainTabs");
+            } else if (exists) {
+              // User exists but no active session, direct to SignIn
               navigation.navigate("SignIn");
             } else {
               // No user exists, direct to SignUp
@@ -126,7 +138,7 @@ const SplashScreen = () => {
     countdown,
     isLoading,
     isAuthenticated,
-    hasCompletedOnboarding,
+    isSessionActive,
     navigation,
     hasNavigated,
     userExists,

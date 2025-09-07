@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import ApiService from "../services/api";
 
 const AuthContext = createContext();
 
@@ -16,6 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [isSessionActive, setIsSessionActive] = useState(false);
 
   useEffect(() => {
     checkAuthStatus();
@@ -25,26 +27,39 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       const userData = await AsyncStorage.getItem("user");
+      const authToken = await AsyncStorage.getItem("authToken");
       const onboardingStatus = await AsyncStorage.getItem(
         "onboardingCompleted"
       );
+      const sessionActive = await AsyncStorage.getItem("sessionActive");
 
-      if (userData) {
+      // Only authenticate if we have user data, token, AND an active session
+      if (userData && authToken && sessionActive === "true") {
+        // Set the token in ApiService
+        ApiService.setToken(authToken);
+
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         setIsAuthenticated(true);
+        setIsSessionActive(true);
         setHasCompletedOnboarding(onboardingStatus === "true");
       } else {
-        // No user data found, user is not authenticated
+        // Clear any existing session data
+        await AsyncStorage.removeItem("sessionActive");
+        await AsyncStorage.removeItem("authToken");
         setUser(null);
         setIsAuthenticated(false);
+        setIsSessionActive(false);
         setHasCompletedOnboarding(false);
       }
     } catch (error) {
       console.error("Error checking auth status:", error);
-      // On error, assume user is not authenticated
+      // On error, clear everything and assume user is not authenticated
+      await AsyncStorage.removeItem("sessionActive");
+      await AsyncStorage.removeItem("authToken");
       setUser(null);
       setIsAuthenticated(false);
+      setIsSessionActive(false);
       setHasCompletedOnboarding(false);
     } finally {
       setIsLoading(false);
@@ -62,22 +77,32 @@ export const AuthProvider = ({ children }) => {
 
   const signUp = async (username, email, pin) => {
     try {
-      const newUser = {
-        id: Date.now().toString(),
-        username,
-        email,
-        createdAt: new Date().toISOString(),
-      };
+      // Call backend API to create user
+      const response = await ApiService.request("/auth/signup", {
+        method: "POST",
+        body: JSON.stringify({ username, email, pin }),
+      });
 
-      // Store user data and PIN
-      await AsyncStorage.setItem("user", JSON.stringify(newUser));
-      await AsyncStorage.setItem("userPin", pin);
+      if (response.token) {
+        // Set the JWT token in ApiService
+        ApiService.setToken(response.token);
 
-      setUser(newUser);
-      setIsAuthenticated(true);
-      setHasCompletedOnboarding(false);
+        // Store token and user data (no local PIN storage)
+        await AsyncStorage.setItem("authToken", response.token);
+        await AsyncStorage.setItem("user", JSON.stringify(response.user));
+        await AsyncStorage.setItem("sessionActive", "true");
 
-      return { success: true };
+        setUser(response.user);
+        setIsAuthenticated(true);
+        setIsSessionActive(true);
+        setHasCompletedOnboarding(
+          response.user.hasCompletedOnboarding || false
+        );
+
+        return { success: true };
+      } else {
+        return { success: false, error: "No token received from server" };
+      }
     } catch (error) {
       console.error("Error during sign up:", error);
       return { success: false, error: error.message };
@@ -86,37 +111,76 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async (pin) => {
     try {
-      const storedPin = await AsyncStorage.getItem("userPin");
       const userData = await AsyncStorage.getItem("user");
 
-      if (!storedPin || !userData) {
+      if (!userData) {
         return {
           success: false,
           error: "No account found. Please sign up first.",
         };
       }
 
-      if (storedPin === pin) {
-        const parsedUser = JSON.parse(userData);
+      const parsedUser = JSON.parse(userData);
+
+      // Call backend API to authenticate
+      const response = await ApiService.request("/auth/signin", {
+        method: "POST",
+        body: JSON.stringify({
+          username: parsedUser.username,
+          pin: pin,
+        }),
+      });
+
+      if (response.token) {
+        // Set the JWT token in ApiService
+        ApiService.setToken(response.token);
+
+        // Store token and update session
+        await AsyncStorage.setItem("authToken", response.token);
+        await AsyncStorage.setItem("sessionActive", "true");
+
         setUser(parsedUser);
         setIsAuthenticated(true);
+        setIsSessionActive(true);
         setHasCompletedOnboarding(parsedUser.hasCompletedOnboarding || false);
         return { success: true };
       } else {
         return { success: false, error: "Invalid PIN" };
       }
     } catch (error) {
-      console.error("Error during sign in:", error);
-      return { success: false, error: error.message };
+      // Don't log the error to console to avoid "User not found" messages
+      // Handle specific backend errors gracefully
+      if (error.message && error.message.includes("User not found")) {
+        return {
+          success: false,
+          error: "No account found. Please sign up first.",
+        };
+      }
+      if (error.message && error.message.includes("Invalid credentials")) {
+        return { success: false, error: "Invalid PIN" };
+      }
+      return { success: false, error: "Sign in failed. Please try again." };
     }
   };
 
-  const setPin = async (pin) => {
+  const changePin = async (oldPin, newPin) => {
     try {
-      await AsyncStorage.setItem("userPin", pin);
-      return { success: true };
+      // Call backend API to change PIN
+      const response = await ApiService.request("/auth/change-pin", {
+        method: "POST",
+        body: JSON.stringify({ oldPin, newPin }),
+      });
+
+      if (response.success) {
+        return { success: true };
+      } else {
+        return {
+          success: false,
+          error: response.error || "Failed to change PIN",
+        };
+      }
     } catch (error) {
-      console.error("Error setting PIN:", error);
+      console.error("Error changing PIN:", error);
       return { success: false, error: error.message };
     }
   };
@@ -137,17 +201,20 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
-      // Only clear authentication state, keep user account data
-      // This allows users to sign back in with the same account
+      // Clear session and authentication state
+      await AsyncStorage.removeItem("sessionActive");
+      await AsyncStorage.removeItem("authToken");
       await AsyncStorage.removeItem("onboardingCompleted");
+      await AsyncStorage.removeItem("lastActiveTime");
+
+      // Clear token from ApiService
+      ApiService.setToken(null);
 
       // Clear authentication state
       setUser(null);
       setIsAuthenticated(false);
+      setIsSessionActive(false);
       setHasCompletedOnboarding(false);
-
-      // Note: We keep "user" and "userPin" in AsyncStorage
-      // so the user can sign back in with the same account
     } catch (error) {
       console.error("Error during sign out:", error);
     }
@@ -170,12 +237,45 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem("user");
       await AsyncStorage.removeItem("userPin");
       await AsyncStorage.removeItem("onboardingCompleted");
+      await AsyncStorage.removeItem("sessionActive");
+      await AsyncStorage.removeItem("profileImage");
       setUser(null);
       setIsAuthenticated(false);
+      setIsSessionActive(false);
       setHasCompletedOnboarding(false);
       return { success: true };
     } catch (error) {
       console.error("Error deleting account:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const clearAllData = async () => {
+    try {
+      // Clear all user data
+      await AsyncStorage.removeItem("user");
+      await AsyncStorage.removeItem("sessionActive");
+      await AsyncStorage.removeItem("authToken");
+      await AsyncStorage.removeItem("onboardingCompleted");
+      await AsyncStorage.removeItem("profileImage");
+
+      // Clear security data
+      await AsyncStorage.removeItem("securityEnabled");
+      await AsyncStorage.removeItem("biometricEnabled");
+      await AsyncStorage.removeItem("lastActiveTime");
+
+      // Clear token from ApiService
+      ApiService.setToken(null);
+
+      // Clear authentication state
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsSessionActive(false);
+      setHasCompletedOnboarding(false);
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error clearing all data:", error);
       return { success: false, error: error.message };
     }
   };
@@ -185,14 +285,16 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     user,
     hasCompletedOnboarding,
+    isSessionActive,
     signUp,
     signIn,
-    setPin,
+    changePin,
     completeOnboarding,
     signOut,
     userExists,
     updateUser,
     deleteAccount,
+    clearAllData,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

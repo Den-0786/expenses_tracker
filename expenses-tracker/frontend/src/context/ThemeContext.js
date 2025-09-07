@@ -8,7 +8,26 @@ const ThemeContext = createContext();
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error("useTheme must be used within a ThemeProvider");
+    console.warn("useTheme called outside ThemeProvider, returning default theme");
+    // Return a default theme to prevent crashes
+    return {
+      theme: {
+        colors: {
+          background: '#ffffff',
+          surface: '#ffffff',
+          text: '#000000',
+          textSecondary: '#666666',
+          primary: '#00897B',
+          error: '#F44336',
+          success: '#4CAF50',
+          warning: '#FF9800',
+        }
+      },
+      isDarkMode: false,
+      themeMode: 'light',
+      toggleTheme: () => {},
+      setTheme: () => {}
+    };
   }
   return context;
 };
@@ -17,6 +36,7 @@ export const ThemeProvider = ({ children }) => {
   const systemColorScheme = useColorScheme();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [themeMode, setThemeMode] = useState("light");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadTheme();
@@ -65,6 +85,8 @@ export const ThemeProvider = ({ children }) => {
       }
     } catch (error) {
       console.log("Error loading theme:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -111,7 +133,13 @@ export const ThemeProvider = ({ children }) => {
     theme: customTheme,
     toggleTheme,
     setTheme,
+    isLoading,
   };
+
+  // Don't render children until theme is loaded
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

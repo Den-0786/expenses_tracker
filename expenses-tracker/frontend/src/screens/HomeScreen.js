@@ -85,14 +85,24 @@ const HomeScreen = () => {
       setUserSettings(settings);
 
       const savedBudgets = await getAllBudgets();
-      if (savedBudgets && typeof savedBudgets === "object") {
-        setBudgets({
-          daily: savedBudgets.daily || 0,
-          weekly: savedBudgets.weekly || 0,
-          monthly: savedBudgets.monthly || 0,
-          yearly: savedBudgets.yearly || 0,
+
+      // Process budget array into object format
+      const budgetObj = {
+        daily: 0,
+        weekly: 0,
+        monthly: 0,
+        yearly: 0,
+      };
+
+      if (Array.isArray(savedBudgets)) {
+        savedBudgets.forEach((budget) => {
+          if (budget.period && budget.amount) {
+            budgetObj[budget.period] = budget.amount;
+          }
         });
       }
+
+      setBudgets(budgetObj);
 
       const today = format(new Date(), "yyyy-MM-dd");
       const todayExp = await getExpensesByDate(today);

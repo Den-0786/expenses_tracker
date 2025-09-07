@@ -34,6 +34,44 @@ export const SecurityProvider = ({ children }) => {
     loadSecuritySettings();
   }, []);
 
+  // Reload security settings when app becomes active
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === "active") {
+        loadSecuritySettings();
+      }
+    };
+
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange
+    );
+    return () => subscription?.remove();
+  }, []);
+
+  // Reset security when settings are cleared (e.g., on logout)
+  useEffect(() => {
+    const checkSecurityReset = async () => {
+      try {
+        const securityEnabled = await AsyncStorage.getItem("securityEnabled");
+        if (securityEnabled !== "true") {
+          // Security was disabled/cleared, reset state
+          setIsSecurityEnabled(false);
+          setIsAuthenticated(true);
+          setIsLocked(false);
+          setPin(null);
+          setIsBiometricEnabled(false);
+          setFailedAttempts(0);
+          setLockoutUntil(null);
+        }
+      } catch (error) {
+        // Silent error handling
+      }
+    };
+
+    checkSecurityReset();
+  }, []);
+
   useEffect(() => {
     if (isSecurityEnabled) {
       checkAppLockStatus();
@@ -71,9 +109,11 @@ export const SecurityProvider = ({ children }) => {
     try {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const supportedTypes =
+        await LocalAuthentication.supportedAuthenticationTypesAsync();
+
       setIsBiometricAvailable(hasHardware && isEnrolled);
     } catch (error) {
-      console.log("Biometric check failed:", error);
       setIsBiometricAvailable(false);
     }
   };
@@ -93,7 +133,7 @@ export const SecurityProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.log("Error checking lock status:", error);
+      // Silent error handling
     }
   };
 
@@ -101,47 +141,43 @@ export const SecurityProvider = ({ children }) => {
     try {
       await AsyncStorage.setItem("lastActiveTime", Date.now().toString());
     } catch (error) {
-      console.log("Error updating last active time:", error);
+      // Silent error handling
     }
   };
 
   const setAppPin = async (newPin) => {
     try {
-      await AsyncStorage.setItem("appPin", newPin);
+      // PIN is now managed by backend, just update local state
       setPin(newPin);
       return true;
     } catch (error) {
-      console.log("Error setting PIN:", error);
       return false;
     }
   };
 
   const verifyPin = async (inputPin) => {
     try {
-      const storedPin = await AsyncStorage.getItem("appPin");
-      if (storedPin === inputPin) {
-        setIsAuthenticated(true);
-        setIsLocked(false);
-        setFailedAttempts(0);
-        setLockoutUntil(null);
-        updateLastActiveTime();
-        return true;
-      } else {
-        handleFailedAttempt();
-        return false;
-      }
+      // PIN verification is now handled by AuthContext signIn
+      // This function is kept for compatibility but should not be used
+      // Use AuthContext.signIn() instead for PIN verification
+      return false;
     } catch (error) {
-      console.log("Error verifying PIN:", error);
       return false;
     }
   };
 
   const authenticateWithBiometric = async () => {
     try {
+      // Check if biometric is available before attempting authentication
+      if (!isBiometricAvailable) {
+        return false;
+      }
+
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: "Authenticate to access your finances",
         fallbackLabel: "Use PIN",
         cancelLabel: "Cancel",
+        disableDeviceFallback: false,
       });
 
       if (result.success) {
@@ -151,10 +187,10 @@ export const SecurityProvider = ({ children }) => {
         setLockoutUntil(null);
         updateLastActiveTime();
         return true;
+      } else {
+        return false;
       }
-      return false;
     } catch (error) {
-      console.log("Biometric authentication failed:", error);
       return false;
     }
   };
@@ -208,7 +244,6 @@ export const SecurityProvider = ({ children }) => {
       setIsBiometricEnabled(newValue);
       return true;
     } catch (error) {
-      console.log("Error toggling biometric:", error);
       return false;
     }
   };
@@ -237,7 +272,6 @@ export const SecurityProvider = ({ children }) => {
 
       return "success";
     } catch (error) {
-      console.log("Error toggling security:", error);
       return "error";
     }
   };
@@ -248,7 +282,6 @@ export const SecurityProvider = ({ children }) => {
       setAutoLockEnabled(enabled);
       return true;
     } catch (error) {
-      console.log("Error toggling auto lock:", error);
       return false;
     }
   };
@@ -259,7 +292,6 @@ export const SecurityProvider = ({ children }) => {
       setAutoLockTimeout(minutes);
       return true;
     } catch (error) {
-      console.log("Error setting auto lock timeout:", error);
       return false;
     }
   };
@@ -270,7 +302,6 @@ export const SecurityProvider = ({ children }) => {
       setAutoLockOnLeave(delay);
       return true;
     } catch (error) {
-      console.log("Error setting auto lock on leave:", error);
       return false;
     }
   };
@@ -278,7 +309,6 @@ export const SecurityProvider = ({ children }) => {
   const loadSecuritySettings = async () => {
     try {
       const securityEnabled = await AsyncStorage.getItem("securityEnabled");
-      const storedPin = await AsyncStorage.getItem("appPin");
       const biometricEnabled = await AsyncStorage.getItem("biometricEnabled");
       const autoLockEnabled = await AsyncStorage.getItem("autoLockEnabled");
       const autoLockTimeout = await AsyncStorage.getItem("autoLockTimeout");
@@ -287,9 +317,7 @@ export const SecurityProvider = ({ children }) => {
       if (securityEnabled === "true") {
         setIsSecurityEnabled(true);
 
-        if (storedPin) {
-          setPin(storedPin);
-        }
+        // PIN is now managed by backend, no local PIN storage
 
         if (biometricEnabled === "true") {
           setIsBiometricEnabled(true);
@@ -314,13 +342,13 @@ export const SecurityProvider = ({ children }) => {
         setIsLocked(false);
       }
     } catch (error) {
-      console.log("Error loading security settings:", error);
+      // Silent error handling
     }
   };
 
   const resetSecurity = async () => {
     try {
-      await AsyncStorage.removeItem("appPin");
+      // Don't remove userPin as it's needed for authentication
       await AsyncStorage.removeItem("biometricEnabled");
       await AsyncStorage.removeItem("lastActiveTime");
       setPin(null);
@@ -330,8 +358,12 @@ export const SecurityProvider = ({ children }) => {
       setFailedAttempts(0);
       setLockoutUntil(null);
     } catch (error) {
-      console.log("Error resetting security:", error);
+      // Silent error handling
     }
+  };
+
+  const reloadSecuritySettings = async () => {
+    await loadSecuritySettings();
   };
 
   const value = {
@@ -346,8 +378,8 @@ export const SecurityProvider = ({ children }) => {
     autoLockOnLeave,
     failedAttempts,
     lockoutUntil,
-    isLockedOut: isLockedOut(),
-    lockoutTimeRemaining: getLockoutTimeRemaining(),
+    isLockedOut: isLockedOut,
+    lockoutTimeRemaining: getLockoutTimeRemaining,
     setAppPin,
     verifyPin,
     authenticateWithBiometric,
@@ -359,6 +391,7 @@ export const SecurityProvider = ({ children }) => {
     setAutoLockTimeout: setAutoLockTimeoutValue,
     setAutoLockOnLeave: setAutoLockOnLeaveValue,
     resetSecurity,
+    reloadSecuritySettings,
     updateLastActiveTime,
   };
 

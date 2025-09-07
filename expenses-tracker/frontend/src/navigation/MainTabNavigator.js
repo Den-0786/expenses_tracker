@@ -9,6 +9,7 @@ import HomeScreen from "../screens/HomeScreen";
 import ExpensesScreen from "../screens/ExpensesScreen";
 import IncomeScreen from "../screens/IncomeScreen";
 import BudgetScreen from "../screens/BudgetScreen";
+// import ReportsScreen from "../screens/ReportsScreen"; // Removed - only email reports
 import NotesScreen from "../screens/NotesScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import OnboardingScreen from "../screens/OnboardingScreen";
@@ -181,6 +182,7 @@ const MainTabNavigator = () => {
         component={BudgetScreen}
         options={{ title: "Budget" }}
       />
+      {/* Reports tab removed - only email reports */}
       <Tab.Screen
         name="Notes"
         component={NotesScreen}

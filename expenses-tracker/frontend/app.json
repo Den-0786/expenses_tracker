@@ -11,9 +11,7 @@
       "backgroundColor": "#1E88E5",
       "barStyle": "light-content"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.denopoku.expensetracker",
@@ -25,15 +23,13 @@
       "adaptiveIcon": {
         "backgroundColor": "#1E88E5"
       },
-      "package": "com.denopoku.expensetracker"
+      "package": "com.denopoku.expensetracker",
+      "permissions": ["USE_BIOMETRIC", "USE_FINGERPRINT"]
     },
     "web": {
       "favicon": null
     },
-    "plugins": [
-      "expo-font",
-      "expo-sqlite"
-    ],
+    "plugins": ["expo-font", "expo-sqlite", "expo-local-authentication"],
     "extra": {
       "eas": {
         "projectId": "ceb6b4da-344d-4197-b160-889eaee37975"

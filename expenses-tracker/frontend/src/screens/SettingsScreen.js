@@ -115,7 +115,7 @@ const SettingsScreen = () => {
     forceReset,
     ensureEnabled,
   } = useSecurityNotice();
-  const { signOut, user, updateUser, deleteAccount } = useAuth();
+  const { signOut, user, updateUser, deleteAccount, clearAllData } = useAuth();
 
   const [userSettings, setUserSettings] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -174,6 +174,7 @@ const SettingsScreen = () => {
     paymentSettings: false,
     security: false,
     notifications: false,
+    emailReports: false,
     categories: false,
     dataManagement: false,
     accountSettings: false,
@@ -185,6 +186,13 @@ const SettingsScreen = () => {
   // Categories and Payment Methods state
   const [categories, setCategories] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
+
+  // Email Reports state
+  const [emailSettings, setEmailSettings] = useState({
+    weeklyReports: false,
+    monthlyReports: false,
+    emailAddress: "",
+  });
 
   const [editingCategory, setEditingCategory] = useState(null);
   const [editingPaymentMethod, setEditingPaymentMethod] = useState(null);
@@ -516,18 +524,28 @@ const SettingsScreen = () => {
       }
 
       try {
-        const success = await setAppPin(pinInput);
-        if (success) {
-          showSnackbar("PIN set successfully!", "success");
+        // Call backend API to change PIN
+        const response = await ApiService.changePin({
+          currentPin: pin, // Use current PIN as old PIN
+          newPin: pinInput,
+        });
+
+        if (response.success) {
+          // Update local security context
+          await setAppPin(pinInput);
+          showSnackbar("PIN changed successfully!", "success");
           setPinSetupVisible(false);
           setPinStep("pin");
           setPinInput("");
           setConfirmPinInput("");
         } else {
-          showSnackbar("Failed to set PIN. Please try again.", "error");
+          showSnackbar("Failed to change PIN. Please try again.", "error");
         }
       } catch (error) {
-        showSnackbar("An error occurred. Please try again.", "error");
+        showSnackbar(
+          "Failed to change PIN. Please check your current PIN.",
+          "error"
+        );
       }
     }
   };
@@ -668,14 +686,35 @@ const SettingsScreen = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    try {
+      // Call backend API to delete account
+      const response = await ApiService.deleteAccount(pin);
+
+      if (response.success) {
+        // Clear all local data
+        await clearAllData();
+        showSnackbar("Account deleted successfully!", "success");
+
+        setTimeout(() => {
+          navigation.replace("SignUp");
+        }, 2000);
+      } else {
+        showSnackbar("Failed to delete account. Please try again.", "error");
+      }
+    } catch (error) {
+      showSnackbar("Failed to delete account. Please check your PIN.", "error");
+    }
+  };
+
   const handleResetApp = async () => {
     try {
       await clearOldData(0);
       await resetSecurity();
       await cancelAllNotifications();
 
-      // Use the deleteAccount function from AuthContext
-      const result = await deleteAccount();
+      // Use the new clearAllData function from AuthContext
+      const result = await clearAllData();
 
       if (result.success) {
         showSnackbar("App reset complete! Please restart the app.", "success");
@@ -751,17 +790,30 @@ const SettingsScreen = () => {
     }
 
     try {
-      // Update user profile using AuthContext
-      const result = await updateUser({
+      // Call backend API to update profile
+      const response = await ApiService.updateUserProfile({
         username: profileForm.username.trim(),
         email: profileForm.email.trim(),
       });
 
-      if (result.success) {
-        showSnackbar("Profile updated successfully!", "success");
-        setProfileEditMode(false);
+      if (response.success) {
+        // Update local user data
+        const result = await updateUser({
+          username: profileForm.username.trim(),
+          email: profileForm.email.trim(),
+        });
+
+        if (result.success) {
+          showSnackbar("Profile updated successfully!", "success");
+          setProfileEditMode(false);
+        } else {
+          showSnackbar(
+            "Profile updated on server but failed to update locally",
+            "warning"
+          );
+        }
       } else {
-        showSnackbar("Failed to update profile", "error");
+        showSnackbar("Failed to update profile. Please try again.", "error");
       }
     } catch (error) {
       showSnackbar("Failed to save profile. Please try again.", "error");
@@ -1437,6 +1489,160 @@ const SettingsScreen = () => {
           </ExpandableSection>
 
           <ExpandableSection
+            title="Email Reports"
+            icon="email"
+            isExpanded={expandedSections.emailReports}
+            onToggle={() => toggleSection("emailReports")}
+          >
+            <List.Item
+              title="Weekly Email Reports"
+              description="Receive detailed weekly budget reports via email"
+              left={(props) => <List.Icon {...props} icon="email" />}
+              right={() => (
+                <Switch
+                  value={emailSettings.weeklyReports}
+                  onValueChange={(value) =>
+                    setEmailSettings((prev) => ({
+                      ...prev,
+                      weeklyReports: value,
+                    }))
+                  }
+                  color="#2196F3"
+                />
+              )}
+            />
+            <Divider style={styles.itemDivider} />
+            <List.Item
+              title="Monthly Email Reports"
+              description="Receive comprehensive monthly financial summaries"
+              left={(props) => <List.Icon {...props} icon="email-multiple" />}
+              right={() => (
+                <Switch
+                  value={emailSettings.monthlyReports}
+                  onValueChange={(value) =>
+                    setEmailSettings((prev) => ({
+                      ...prev,
+                      monthlyReports: value,
+                    }))
+                  }
+                  color="#2196F3"
+                />
+              )}
+            />
+            <Divider style={styles.itemDivider} />
+            <List.Item
+              title="Email Address"
+              description={emailSettings.emailAddress || "Not set"}
+              left={(props) => <List.Icon {...props} icon="at" />}
+              onPress={() => {
+                Alert.prompt(
+                  "Email Address",
+                  "Enter your email address for reports:",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Save",
+                      onPress: (text) => {
+                        if (text && text.includes("@")) {
+                          setEmailSettings((prev) => ({
+                            ...prev,
+                            emailAddress: text,
+                          }));
+                          showSnackbar("Email address updated!", "success");
+                        } else {
+                          showSnackbar(
+                            "Please enter a valid email address",
+                            "error"
+                          );
+                        }
+                      },
+                    },
+                  ],
+                  "plain-text",
+                  emailSettings.emailAddress || ""
+                );
+              }}
+            />
+          </ExpandableSection>
+
+          <ExpandableSection
+            title="Email Reports"
+            icon="email"
+            isExpanded={expandedSections.emailReports}
+            onToggle={() => toggleSection("emailReports")}
+          >
+            <List.Item
+              title="Weekly Email Reports"
+              description="Receive detailed weekly budget reports via email"
+              left={(props) => <List.Icon {...props} icon="email" />}
+              right={() => (
+                <Switch
+                  value={emailSettings.weeklyReports}
+                  onValueChange={(value) =>
+                    setEmailSettings((prev) => ({
+                      ...prev,
+                      weeklyReports: value,
+                    }))
+                  }
+                  color="#2196F3"
+                />
+              )}
+            />
+            <Divider style={styles.itemDivider} />
+            <List.Item
+              title="Monthly Email Reports"
+              description="Receive comprehensive monthly financial summaries"
+              left={(props) => <List.Icon {...props} icon="email-multiple" />}
+              right={() => (
+                <Switch
+                  value={emailSettings.monthlyReports}
+                  onValueChange={(value) =>
+                    setEmailSettings((prev) => ({
+                      ...prev,
+                      monthlyReports: value,
+                    }))
+                  }
+                  color="#2196F3"
+                />
+              )}
+            />
+            <Divider style={styles.itemDivider} />
+            <List.Item
+              title="Email Address"
+              description={emailSettings.emailAddress || "Not set"}
+              left={(props) => <List.Icon {...props} icon="at" />}
+              onPress={() => {
+                Alert.prompt(
+                  "Email Address",
+                  "Enter your email address for reports:",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Save",
+                      onPress: (text) => {
+                        if (text && text.includes("@")) {
+                          setEmailSettings((prev) => ({
+                            ...prev,
+                            emailAddress: text,
+                          }));
+                          showSnackbar("Email address updated!", "success");
+                        } else {
+                          showSnackbar(
+                            "Please enter a valid email address",
+                            "error"
+                          );
+                        }
+                      },
+                    },
+                  ],
+                  "plain-text",
+                  emailSettings.emailAddress || ""
+                );
+              }}
+            />
+          </ExpandableSection>
+
+          <ExpandableSection
             title="Data Management"
             icon="database"
             isExpanded={expandedSections.dataManagement}
@@ -1609,7 +1815,7 @@ const SettingsScreen = () => {
 
             <Button
               mode="outlined"
-              onPress={handleResetApp}
+              onPress={handleDeleteAccount}
               style={styles.dangerButton}
               textColor="#FF9800"
             >

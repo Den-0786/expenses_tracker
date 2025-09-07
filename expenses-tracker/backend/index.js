@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { PrismaClient } = require("@prisma/client");
+// Report scheduler removed - only email functionality in settings
 require("dotenv").config();
 
 const app = express();
@@ -66,6 +67,7 @@ app.use("/api/settings", require("./routes/settings"));
 app.use("/api/search", require("./routes/search"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/notifications", require("./routes/notifications"));
+// Reports route removed - only email functionality in settings
 
 app.use((err, req, res, next) => {
   res.status(500).json({
@@ -82,11 +84,13 @@ app.use("*", (req, res) => {
 });
 
 process.on("SIGINT", async () => {
+  // Report scheduler removed
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
+  // Report scheduler removed
   await prisma.$disconnect();
   process.exit(0);
 });
@@ -96,6 +100,9 @@ app.listen(PORT, () => {
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`📊 API Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔗 Database test: http://localhost:${PORT}/db-test`);
+
+  // Start report scheduler
+  // Report scheduler removed
 });
 
 module.exports = app;

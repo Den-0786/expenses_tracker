@@ -192,13 +192,13 @@ const ExpensesScreen = () => {
     }
 
     try {
-      await addExpense(
-        parseFloat(newExpense.amount),
-        newExpense.description,
-        "General",
-        format(new Date(), "yyyy-MM-dd"),
-        "Cash"
-      );
+      await addExpense({
+        title: newExpense.description,
+        amount: parseFloat(newExpense.amount),
+        description: newExpense.description,
+        date: format(new Date(), "yyyy-MM-dd"),
+        categoryId: null,
+      });
 
       setNewExpense({
         amount: "",

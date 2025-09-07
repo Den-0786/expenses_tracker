@@ -107,9 +107,10 @@ const NotesScreen = () => {
   const loadNotes = async () => {
     try {
       const notesData = await getNotes();
-      setNotes(notesData || []);
+      setNotes(Array.isArray(notesData) ? notesData : []);
     } catch (error) {
       showSnackbar(error?.message || "Failed to load notes", "error");
+      setNotes([]);
     }
   };
 
@@ -120,20 +121,22 @@ const NotesScreen = () => {
   };
 
   const filterNotes = () => {
+    const notesArray = Array.isArray(notes) ? notes : [];
+
     if (!searchQuery.trim()) {
-      setFilteredNotes(notes);
+      setFilteredNotes(notesArray);
       return;
     }
 
     const query = searchQuery.toLowerCase().trim();
-    const filtered = notes.filter((note) => {
+    const filtered = notesArray.filter((note) => {
       // Search in title
-      if (note.title.toLowerCase().includes(query)) {
+      if (note.title && note.title.toLowerCase().includes(query)) {
         return true;
       }
 
       // Search in body/content
-      if (note.body.toLowerCase().includes(query)) {
+      if (note.body && note.body.toLowerCase().includes(query)) {
         return true;
       }
 
@@ -677,7 +680,7 @@ const NotesScreen = () => {
           automaticallyAdjustContentInsets={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {filteredNotes.length === 0 ? (
+          {!Array.isArray(filteredNotes) || filteredNotes.length === 0 ? (
             <View style={styles.emptyState}>
               <MaterialIcons name="note-add" size={64} color="#ccc" />
               <Text style={styles.emptyStateText}>
@@ -697,14 +700,17 @@ const NotesScreen = () => {
               ]}
             >
               <Card.Content style={styles.notesContent}>
-                {filteredNotes.map((note, index) => (
-                  <View key={note.id}>
-                    {renderNoteRow(note)}
-                    {index < filteredNotes.length - 1 && (
-                      <View style={styles.noteDivider} />
-                    )}
-                  </View>
-                ))}
+                {(Array.isArray(filteredNotes) ? filteredNotes : []).map(
+                  (note, index) => (
+                    <View key={note.id}>
+                      {renderNoteRow(note)}
+                      {index <
+                        (Array.isArray(filteredNotes) ? filteredNotes : [])
+                          .length -
+                          1 && <View style={styles.noteDivider} />}
+                    </View>
+                  )
+                )}
               </Card.Content>
             </Card>
           )}

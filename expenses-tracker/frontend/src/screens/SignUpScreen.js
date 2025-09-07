@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,9 +7,10 @@ import {
   Keyboard,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { TextInput, Button } from "react-native-paper";
+import { TextInput, Button, Switch, Card } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { useSecurity } from "../context/SecurityContext";
 
 const SignUpScreen = ({ navigation }) => {
   const [username, setUsername] = useState("");
@@ -18,7 +19,11 @@ const SignUpScreen = ({ navigation }) => {
   const [confirmPin, setConfirmPin] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showBiometricSetup, setShowBiometricSetup] = useState(false);
+  const [enableBiometric, setEnableBiometric] = useState(false);
   const { signUp } = useAuth();
+  const { isBiometricAvailable, authenticateWithBiometric, toggleSecurity } =
+    useSecurity();
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -66,7 +71,13 @@ const SignUpScreen = ({ navigation }) => {
     try {
       const result = await signUp(username.trim(), email.trim(), pin.trim());
       if (result.success) {
-        navigation.replace("MainTabs");
+        // Enable security (PIN is managed by backend)
+        await toggleSecurity(true, "pin");
+
+        // Show biometric setup if available
+        if (isBiometricAvailable) {
+          setShowBiometricSetup(true);
+        }
       } else {
         setError(result.error || "Sign up failed. Please try again.");
       }
@@ -210,6 +221,82 @@ const SignUpScreen = ({ navigation }) => {
             </View>
           </View>
 
+          {/* Biometric Setup Modal */}
+          {showBiometricSetup && (
+            <View style={styles.biometricOverlay}>
+              <Card style={styles.biometricCard}>
+                <Card.Content style={styles.biometricContent}>
+                  <MaterialIcons
+                    name="fingerprint"
+                    size={60}
+                    color="#4CAF50"
+                    style={styles.biometricIcon}
+                  />
+                  <Text style={styles.biometricTitle}>
+                    Enable Biometric Security
+                  </Text>
+                  <Text style={styles.biometricSubtitle}>
+                    Use your fingerprint or face recognition for quick and
+                    secure access to your account.
+                  </Text>
+
+                  {isBiometricAvailable ? (
+                    <View style={styles.biometricOption}>
+                      <Text style={styles.biometricOptionText}>
+                        Enable Biometric Authentication
+                      </Text>
+                      <Switch
+                        value={enableBiometric}
+                        onValueChange={setEnableBiometric}
+                        color="#4CAF50"
+                      />
+                    </View>
+                  ) : (
+                    <Text style={styles.biometricUnavailableText}>
+                      Biometric authentication is not available on this device.
+                    </Text>
+                  )}
+
+                  <View style={styles.biometricButtons}>
+                    <Button
+                      mode="outlined"
+                      onPress={() => {
+                        setEnableBiometric(false);
+                        navigation.replace("MainTabs");
+                      }}
+                      style={styles.biometricButton}
+                      textColor="#666"
+                    >
+                      Skip
+                    </Button>
+                    <Button
+                      mode="contained"
+                      onPress={async () => {
+                        if (enableBiometric) {
+                          try {
+                            // Test biometric authentication
+                            const success = await authenticateWithBiometric();
+                            if (success) {
+                              // Enable biometric in security settings
+                              await toggleSecurity(true, "biometric");
+                            }
+                          } catch (error) {
+                            // Silent error handling
+                          }
+                        }
+                        navigation.replace("MainTabs");
+                      }}
+                      style={styles.biometricButton}
+                      buttonColor="#4CAF50"
+                    >
+                      Continue
+                    </Button>
+                  </View>
+                </Card.Content>
+              </Card>
+            </View>
+          )}
+
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account?</Text>
             <Button
@@ -257,7 +344,7 @@ const styles = StyleSheet.create({
   formContainer: {
     width: "100%",
     marginBottom: 10,
-    marginTop:-27,
+    marginTop: -27,
   },
   cardWrapper: {
     backgroundColor: "rgba(255,255,255,0.1)",
@@ -323,6 +410,75 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#FFFFFF",
+  },
+  biometricOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  biometricCard: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 20,
+    elevation: 10,
+  },
+  biometricContent: {
+    padding: 30,
+    alignItems: "center",
+  },
+  biometricIcon: {
+    marginBottom: 20,
+  },
+  biometricTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  biometricSubtitle: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 30,
+    lineHeight: 22,
+  },
+  biometricOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 30,
+    paddingHorizontal: 10,
+  },
+  biometricOptionText: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "500",
+  },
+  biometricUnavailableText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    fontStyle: "italic",
+    marginBottom: 20,
+  },
+  biometricButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    gap: 15,
+  },
+  biometricButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 8,
   },
 });
 

@@ -109,7 +109,8 @@ export const DatabaseProvider = ({ children }) => {
 
   const saveExpense = async (expense) => {
     try {
-      const savedExpense = await ApiService.createExpense(expense);
+      const response = await ApiService.createExpense(expense);
+      const savedExpense = response.expense;
       setExpenses((prev) => [...prev, savedExpense]);
       return savedExpense;
     } catch (error) {
@@ -120,7 +121,8 @@ export const DatabaseProvider = ({ children }) => {
 
   const updateExpense = async (id, expenseData) => {
     try {
-      const updatedExpense = await ApiService.updateExpense(id, expenseData);
+      const response = await ApiService.updateExpense(id, expenseData);
+      const updatedExpense = response.expense;
       setExpenses((prev) =>
         prev.map((exp) => (exp.id === id ? updatedExpense : exp))
       );
@@ -141,13 +143,27 @@ export const DatabaseProvider = ({ children }) => {
     }
   };
 
+  const getExpensesByDate = async (date) => {
+    try {
+      const response = await ApiService.getExpensesByDateRange(date, date);
+      return response.expenses || [];
+    } catch (error) {
+      // If no token provided, user is not authenticated yet
+      if (error.message && error.message.includes("No token provided")) {
+        return [];
+      }
+      console.error("Error getting expenses by date:", error);
+      return [];
+    }
+  };
+
   const getExpensesByDateRange = async (startDate, endDate) => {
     try {
-      const expensesData = await ApiService.getExpensesByDateRange(
+      const response = await ApiService.getExpensesByDateRange(
         startDate,
         endDate
       );
-      return expensesData;
+      return response.expenses || [];
     } catch (error) {
       // If no token provided, user is not authenticated yet
       if (error.message && error.message.includes("No token provided")) {
@@ -160,8 +176,8 @@ export const DatabaseProvider = ({ children }) => {
 
   const getAllExpenses = async () => {
     try {
-      const expensesData = await ApiService.getExpenses();
-      return expensesData;
+      const response = await ApiService.getExpenses();
+      return response.expenses || [];
     } catch (error) {
       // If no token provided, user is not authenticated yet
       if (error.message && error.message.includes("No token provided")) {
@@ -188,7 +204,8 @@ export const DatabaseProvider = ({ children }) => {
 
   const saveIncome = async (incomeData) => {
     try {
-      const savedIncome = await ApiService.createIncome(incomeData);
+      const response = await ApiService.createIncome(incomeData);
+      const savedIncome = response.income;
       setIncome((prev) => [...prev, savedIncome]);
       return savedIncome;
     } catch (error) {
@@ -199,7 +216,8 @@ export const DatabaseProvider = ({ children }) => {
 
   const updateIncome = async (id, incomeData) => {
     try {
-      const updatedIncome = await ApiService.updateIncome(id, incomeData);
+      const response = await ApiService.updateIncome(id, incomeData);
+      const updatedIncome = response.income;
       setIncome((prev) =>
         prev.map((inc) => (inc.id === id ? updatedIncome : inc))
       );
@@ -222,11 +240,11 @@ export const DatabaseProvider = ({ children }) => {
 
   const getIncomeByDateRange = async (startDate, endDate) => {
     try {
-      const incomeData = await ApiService.getIncomeByDateRange(
+      const response = await ApiService.getIncomeByDateRange(
         startDate,
         endDate
       );
-      return incomeData;
+      return response.income || [];
     } catch (error) {
       // If no token provided, user is not authenticated yet
       if (error.message && error.message.includes("No token provided")) {
@@ -239,8 +257,8 @@ export const DatabaseProvider = ({ children }) => {
 
   const getAllIncome = async () => {
     try {
-      const incomeData = await ApiService.getIncome();
-      return incomeData;
+      const response = await ApiService.getIncome();
+      return response.income || [];
     } catch (error) {
       // If no token provided, user is not authenticated yet
       if (error.message && error.message.includes("No token provided")) {
@@ -345,9 +363,22 @@ export const DatabaseProvider = ({ children }) => {
         budgetData = period;
       }
 
-      const savedBudget = await ApiService.createBudget(budgetData);
-      setBudgets((prev) => [...prev, savedBudget]);
-      return savedBudget;
+      // Only save if amount is greater than 0
+      if (budgetData.amount > 0) {
+        const response = await ApiService.createBudget(budgetData);
+        const savedBudget = response.budget;
+        setBudgets((prev) => [...prev, savedBudget]);
+        return savedBudget;
+      } else {
+        // For zero amounts, just return a mock budget object
+        return {
+          id: `temp_${period}`,
+          period: period,
+          amount: 0,
+          startDate: new Date(),
+          endDate: new Date(),
+        };
+      }
     } catch (error) {
       console.error("Error saving budget:", error);
       throw error;
@@ -356,7 +387,8 @@ export const DatabaseProvider = ({ children }) => {
 
   const updateBudget = async (id, budgetData) => {
     try {
-      const updatedBudget = await ApiService.updateBudget(id, budgetData);
+      const response = await ApiService.updateBudget(id, budgetData);
+      const updatedBudget = response.budget;
       setBudgets((prev) =>
         prev.map((budget) => (budget.id === id ? updatedBudget : budget))
       );
@@ -379,8 +411,8 @@ export const DatabaseProvider = ({ children }) => {
 
   const getAllBudgets = async () => {
     try {
-      const budgetsData = await ApiService.getBudgets();
-      return budgetsData;
+      const response = await ApiService.getBudgets();
+      return response.budgets || [];
     } catch (error) {
       // If no token provided, user is not authenticated yet
       if (error.message && error.message.includes("No token provided")) {
@@ -1008,6 +1040,7 @@ export const DatabaseProvider = ({ children }) => {
     addExpense: saveExpense, // Alias for compatibility
     updateExpense,
     deleteExpense,
+    getExpensesByDate,
     getExpensesByDateRange,
     getAllExpenses,
 

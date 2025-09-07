@@ -22,31 +22,18 @@ export const SecurityNoticeProvider = ({ children }) => {
 
   const loadSecurityNoticeSetting = async () => {
     try {
-      // Clear old keys to avoid conflicts
-      try {
-        await AsyncStorage.removeItem("showSecurityNotice");
-      } catch (e) {}
+      // Check if security is enabled
+      const securityEnabled = await AsyncStorage.getItem("securityEnabled");
+      const appPin = await AsyncStorage.getItem("appPin");
 
-      const setting = await AsyncStorage.getItem("securityNoticeEnabled");
-
-      // ALWAYS force to true for now - this is the user's request
-      // Force default to true for new installations or if setting is false
-      if (setting === null || setting === "false") {
-        setShowSecurityNotice(true);
-        // Save the default setting to AsyncStorage
-        await AsyncStorage.setItem("securityNoticeEnabled", "true");
-      } else if (setting === "true") {
-        // User has explicitly set it to true
-
+      // Only show security notice if security is NOT enabled
+      if (securityEnabled !== "true" || !appPin) {
         setShowSecurityNotice(true);
       } else {
-        // Any other value, force to true
-
-        setShowSecurityNotice(true);
-        await AsyncStorage.setItem("securityNoticeEnabled", "true");
+        setShowSecurityNotice(false);
       }
     } catch (error) {
-      // On error, keep default as true
+      // On error, show notice by default
       setShowSecurityNotice(true);
     }
   };
