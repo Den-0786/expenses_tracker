@@ -1,10 +1,11 @@
 // API Configuration for different environments
 import { Platform } from "react-native";
+import { getApiUrl, isDevelopment } from "./environment";
 
 // Determine the correct API base URL based on platform and environment
 const getApiBaseUrl = () => {
   // For development, use local IP address for mobile devices
-  if (__DEV__) {
+  if (isDevelopment()) {
     // Use your computer's local IP address for mobile development
     // You can change this to match your network configuration
     const LOCAL_IP = "172.20.10.2";
@@ -19,8 +20,8 @@ const getApiBaseUrl = () => {
     }
   }
 
-  // Production - use your production API URL
-  return "https://your-production-api.com/api";
+  // Production - use your Render API URL
+  return "https://expenses-tracker-backend-wpui.onrender.com/api";
 };
 
 export const API_CONFIG = {

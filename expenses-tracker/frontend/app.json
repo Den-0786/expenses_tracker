@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Expenses Tracker",
+    "name": "MyExpenseTracker",
     "slug": "expense-tracker",
     "version": "1.0.0",
     "runtimeVersion": "1.0.0",
@@ -14,16 +14,17 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.denopoku.expensetracker",
+      "bundleIdentifier": "com.denopoku.myexpensetracker",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.denopoku.myexpensetracker",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#1E88E5"
       },
-      "package": "com.denopoku.expensetracker",
       "permissions": ["USE_BIOMETRIC", "USE_FINGERPRINT"]
     },
     "web": {

@@ -5,7 +5,7 @@ export const APP_CONFIG = {
 
   // Backend API configuration
   API: {
-    BASE_URL: "http://localhost:3000/api",
+    BASE_URL: "https://expenses-tracker-backend-wpui.onrender.com/api",
     TIMEOUT: 10000, // 10 seconds
   },
 
@@ -53,11 +53,3 @@ export const getApiBaseUrl = () => APP_CONFIG.API.BASE_URL;
 
 // Helper function to get app currency
 export const getAppCurrency = () => APP_CONFIG.APP.CURRENCY;
-
-
-
-
-
-
-
-

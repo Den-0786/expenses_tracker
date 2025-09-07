@@ -574,6 +574,26 @@ export const DatabaseProvider = ({ children }) => {
     }
   };
 
+  // Refresh all data - useful for clearing cache and reloading
+  const refreshAllData = async () => {
+    try {
+      console.log("Refreshing all user data...");
+      await Promise.all([
+        loadUserSettings(),
+        loadExpenses(),
+        loadIncome(),
+        loadNotes(),
+        loadBudgets(),
+        loadCategories(),
+        loadPaymentMethods(),
+        loadPreferences(),
+      ]);
+      console.log("All user data refreshed successfully");
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+    }
+  };
+
   const savePreference = async (key, value) => {
     try {
       const savedPreference = await ApiService.setUserPreference(key, value);
@@ -822,6 +842,12 @@ export const DatabaseProvider = ({ children }) => {
   const clearOldData = async (days) => {
     try {
       const result = await ApiService.clearOldData(days);
+
+      // Refresh all data after clearing to update the UI
+      if (result.success) {
+        await refreshAllData();
+      }
+
       return result;
     } catch (error) {
       // If not authenticated, skip server clear but allow local reset flow to proceed
@@ -1083,6 +1109,7 @@ export const DatabaseProvider = ({ children }) => {
     // User Preferences
     loadPreferences,
     loadUserData,
+    refreshAllData,
     savePreference,
     updatePreference,
     deletePreference,

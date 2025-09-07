@@ -8,6 +8,7 @@ import {
   Dimensions,
   TouchableOpacity,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   Card,
   Title,
@@ -78,6 +79,13 @@ const HomeScreen = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const loadData = async () => {
     try {
