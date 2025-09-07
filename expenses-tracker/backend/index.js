@@ -18,6 +18,10 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/", (req, res) => {
+  res.status(200).send("🚀 Expense Tracker Backend is running");
+});
+
 app.get("/health", (req, res) => {
   res.json({
     status: "OK",
@@ -101,8 +105,7 @@ app.listen(PORT, () => {
   console.log(`📊 API Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔗 Database test: http://localhost:${PORT}/db-test`);
 
-  // Start report scheduler
-  // Report scheduler removed
+  
 });
 
 module.exports = app;
