@@ -7,9 +7,8 @@ export const ENVIRONMENTS = {
 };
 
 // Current environment - change this to switch between dev and production
-export const CURRENT_ENVIRONMENT = __DEV__
-  ? ENVIRONMENTS.DEVELOPMENT
-  : ENVIRONMENTS.PRODUCTION;
+// Set to PRODUCTION to use deployed backend, DEVELOPMENT for local backend
+export const CURRENT_ENVIRONMENT = ENVIRONMENTS.PRODUCTION;
 
 // API URLs for different environments
 export const API_URLS = {
