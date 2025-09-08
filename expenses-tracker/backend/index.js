@@ -22,6 +22,10 @@ app.get("/", (req, res) => {
   res.status(200).send("🚀 Expense Tracker Backend is running");
 });
 
+app.head("/", (req, res) => {
+  res.status(200).end();
+});
+
 app.get("/health", (req, res) => {
   res.json({
     status: "OK",
@@ -30,12 +34,20 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.head("/health", (req, res) => {
+  res.status(200).end();
+});
+
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
     message: "Expense Tracker API is running",
     timestamp: new Date().toISOString(),
   });
+});
+
+app.head("/api/health", (req, res) => {
+  res.status(200).end();
 });
 
 app.get("/db-test", async (req, res) => {
@@ -104,8 +116,6 @@ app.listen(PORT, () => {
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`📊 API Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔗 Database test: http://localhost:${PORT}/db-test`);
-
-  
 });
 
 module.exports = app;

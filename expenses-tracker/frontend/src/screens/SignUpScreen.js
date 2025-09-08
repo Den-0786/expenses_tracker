@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -25,6 +25,26 @@ const SignUpScreen = ({ navigation }) => {
   const { isBiometricAvailable, authenticateWithBiometric, toggleSecurity } =
     useSecurity();
 
+  const errorTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    if (error) {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+
+      errorTimeoutRef.current = setTimeout(() => {
+        setError("");
+      }, 10000); // 10 seconds timeout
+    }
+
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    };
+  }, [error]);
+
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -32,6 +52,21 @@ const SignUpScreen = ({ navigation }) => {
 
   const validatePin = (pin) => {
     return pin.length >= 4;
+  };
+
+  const handleInputChange = (field, value) => {
+    if (field === "username") setUsername(value);
+    else if (field === "email") setEmail(value);
+    else if (field === "pin") setPin(value);
+    else if (field === "confirmPin") setConfirmPin(value);
+
+    // Clear error when user starts typing
+    if (error) {
+      setError("");
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    }
   };
 
   const handleSignUp = async () => {
@@ -119,7 +154,7 @@ const SignUpScreen = ({ navigation }) => {
                 <TextInput
                   mode="outlined"
                   value={username}
-                  onChangeText={setUsername}
+                  onChangeText={(value) => handleInputChange("username", value)}
                   placeholder="Enter your username"
                   style={styles.input}
                   outlineColor="rgba(255,255,255,0.5)"
@@ -139,7 +174,7 @@ const SignUpScreen = ({ navigation }) => {
                 <TextInput
                   mode="outlined"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(value) => handleInputChange("email", value)}
                   placeholder="Enter your email"
                   style={styles.input}
                   outlineColor="rgba(255,255,255,0.5)"
@@ -159,7 +194,7 @@ const SignUpScreen = ({ navigation }) => {
                 <TextInput
                   mode="outlined"
                   value={pin}
-                  onChangeText={setPin}
+                  onChangeText={(value) => handleInputChange("pin", value)}
                   placeholder="Create a PIN (min 4 characters)"
                   style={styles.input}
                   outlineColor="rgba(255,255,255,0.5)"
@@ -179,7 +214,9 @@ const SignUpScreen = ({ navigation }) => {
                 <TextInput
                   mode="outlined"
                   value={confirmPin}
-                  onChangeText={setConfirmPin}
+                  onChangeText={(value) =>
+                    handleInputChange("confirmPin", value)
+                  }
                   placeholder="Confirm your PIN"
                   style={styles.input}
                   outlineColor="rgba(255,255,255,0.5)"

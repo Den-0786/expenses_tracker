@@ -53,7 +53,6 @@ export const AuthProvider = ({ children }) => {
         setHasCompletedOnboarding(false);
       }
     } catch (error) {
-      console.error("Error checking auth status:", error);
       // On error, clear everything and assume user is not authenticated
       await AsyncStorage.removeItem("sessionActive");
       await AsyncStorage.removeItem("authToken");
@@ -104,7 +103,6 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: "No token received from server" };
       }
     } catch (error) {
-      console.error("Error during sign up:", error);
       return { success: false, error: error.message };
     }
   };
@@ -180,7 +178,6 @@ export const AuthProvider = ({ children }) => {
         };
       }
     } catch (error) {
-      console.error("Error changing PIN:", error);
       return { success: false, error: error.message };
     }
   };
@@ -194,7 +191,6 @@ export const AuthProvider = ({ children }) => {
       setHasCompletedOnboarding(true);
       return { success: true };
     } catch (error) {
-      console.error("Error completing onboarding:", error);
       return { success: false, error: error.message };
     }
   };
@@ -216,7 +212,7 @@ export const AuthProvider = ({ children }) => {
       setIsSessionActive(false);
       setHasCompletedOnboarding(false);
     } catch (error) {
-      console.error("Error during sign out:", error);
+      // Silent error handling for sign out
     }
   };
 
@@ -227,7 +223,6 @@ export const AuthProvider = ({ children }) => {
       setUser(updatedUser);
       return { success: true };
     } catch (error) {
-      console.error("Error updating user:", error);
       return { success: false, error: error.message };
     }
   };
@@ -245,7 +240,6 @@ export const AuthProvider = ({ children }) => {
       setHasCompletedOnboarding(false);
       return { success: true };
     } catch (error) {
-      console.error("Error deleting account:", error);
       return { success: false, error: error.message };
     }
   };
@@ -275,7 +269,6 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true };
     } catch (error) {
-      console.error("Error clearing all data:", error);
       return { success: false, error: error.message };
     }
   };
