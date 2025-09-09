@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { Provider as PaperProvider } from "react-native-paper";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 import AuthNavigator from "./src/navigation/AuthNavigator";
 
@@ -37,6 +38,7 @@ const AppContent = () => {
               <NavigationContainer>
                 <StatusBar style="auto" />
                 <AuthNavigator />
+                <Toast />
               </NavigationContainer>
             </SecurityNoticeProvider>
           </SecurityProvider>

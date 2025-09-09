@@ -92,14 +92,31 @@ const SignInScreen = ({ navigation }) => {
     setError("");
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/auth/reset-pin-request`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: resetEmail.trim() }),
+        }
+      );
 
-      setShowForgotPinModal(false);
-      setResetEmail("");
-      setError("");
-      setSuccessMessage("PIN reset instructions sent to your email");
+      const data = await response.json();
+
+      if (response.ok) {
+        setShowForgotPinModal(false);
+        setResetEmail("");
+        setError("");
+        setSuccessMessage("PIN reset instructions sent to your email");
+      } else {
+        setError(
+          data.message || "Failed to send reset instructions. Please try again."
+        );
+      }
     } catch (error) {
-      setError("Failed to send reset instructions. Please try again.");
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setResetLoading(false);
     }

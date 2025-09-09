@@ -1,7 +1,9 @@
 const express = require("express");
 const cors = require("cors");
+const cron = require("node-cron");
 const { PrismaClient } = require("@prisma/client");
-// Report scheduler removed - only email functionality in settings
+const { sendPasswordResetEmail, sendExpenseReport } = require("./utils/email");
+
 require("dotenv").config();
 
 const app = express();
@@ -83,7 +85,35 @@ app.use("/api/settings", require("./routes/settings"));
 app.use("/api/search", require("./routes/search"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/notifications", require("./routes/notifications"));
-// Reports route removed - only email functionality in settings
+
+// Password reset endpoint
+app.post("/api/auth/reset-password", async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    await sendPasswordResetEmail(email);
+    res.json({ message: "Password reset email sent" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Cron jobs for reports
+cron.schedule("0 9 * * MON", async () => {
+  const users = await prisma.user.findMany();
+  for (let user of users) {
+    await sendExpenseReport(user.email, user.id, "weekly");
+  }
+});
+
+cron.schedule("0 9 1 * *", async () => {
+  const users = await prisma.user.findMany();
+  for (let user of users) {
+    await sendExpenseReport(user.email, user.id, "monthly");
+  }
+});
 
 app.use((err, req, res, next) => {
   res.status(500).json({

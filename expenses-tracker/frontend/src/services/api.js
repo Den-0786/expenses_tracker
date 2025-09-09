@@ -1,4 +1,5 @@
 import { API_CONFIG } from "../config/api";
+import { showNetworkError } from "../utils/toast";
 
 class ApiService {
   constructor() {
@@ -64,6 +65,7 @@ class ApiService {
       }
     } catch (error) {
       if (error.name === "AbortError") {
+        showNetworkError();
         throw new Error("Network timeout. Please try again.");
       }
       // React Native fetch throws TypeError on network failure
@@ -73,7 +75,10 @@ class ApiService {
           (error.message.includes("Network request failed") ||
             error.message.includes("Failed to fetch")))
       ) {
-        throw new Error("Network unavailable. Please check your connection.");
+        showNetworkError();
+        throw new Error(
+          "No internet connection. Please check your internet and try again."
+        );
       }
       throw error;
     }

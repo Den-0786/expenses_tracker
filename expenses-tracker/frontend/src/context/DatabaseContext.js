@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { format } from "date-fns";
 import ApiService from "../services/api";
+import { showNetworkError } from "../utils/toast";
 
 /**
  * DatabaseContext - Connected to Neon Postgres via API
@@ -49,6 +50,10 @@ export const DatabaseProvider = ({ children }) => {
       // User data will be loaded when user logs in
     } catch (error) {
       console.error("Error initializing database:", error);
+      // Check if it's a network error
+      if (error.message && error.message.includes("No internet connection")) {
+        showNetworkError();
+      }
       // Still set ready to allow app to function
       setIsReady(true);
     }

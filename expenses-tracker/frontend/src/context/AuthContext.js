@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ApiService from "../services/api";
+import { showNetworkError } from "../utils/toast";
 
 const AuthContext = createContext();
 
@@ -103,6 +104,10 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: "No token received from server" };
       }
     } catch (error) {
+      // Check if it's a network error
+      if (error.message && error.message.includes("No internet connection")) {
+        showNetworkError();
+      }
       return { success: false, error: error.message };
     }
   };
@@ -157,6 +162,10 @@ export const AuthProvider = ({ children }) => {
       if (error.message && error.message.includes("Invalid credentials")) {
         return { success: false, error: "Invalid PIN" };
       }
+      // Check if it's a network error
+      if (error.message && error.message.includes("No internet connection")) {
+        showNetworkError();
+      }
       return { success: false, error: "Sign in failed. Please try again." };
     }
   };
@@ -178,6 +187,10 @@ export const AuthProvider = ({ children }) => {
         };
       }
     } catch (error) {
+      // Check if it's a network error
+      if (error.message && error.message.includes("No internet connection")) {
+        showNetworkError();
+      }
       return { success: false, error: error.message };
     }
   };
