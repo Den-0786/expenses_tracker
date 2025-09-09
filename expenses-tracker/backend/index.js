@@ -102,16 +102,44 @@ app.post("/api/auth/reset-password", async (req, res) => {
 
 // Cron jobs for reports
 cron.schedule("0 9 * * MON", async () => {
-  const users = await prisma.user.findMany();
-  for (let user of users) {
-    await sendExpenseReport(user.email, user.id, "weekly");
+  try {
+    // Only send reports to users who have actual data
+    const usersWithData = await prisma.user.findMany({
+      where: {
+        OR: [
+          { expenses: { some: {} } },
+          { income: { some: {} } },
+          { budgets: { some: {} } },
+        ],
+      },
+    });
+
+    for (let user of usersWithData) {
+      await sendExpenseReport(user.email, user.id, "weekly");
+    }
+  } catch (error) {
+    console.error("Error sending weekly reports:", error);
   }
 });
 
 cron.schedule("0 9 1 * *", async () => {
-  const users = await prisma.user.findMany();
-  for (let user of users) {
-    await sendExpenseReport(user.email, user.id, "monthly");
+  try {
+    // Only send reports to users who have actual data
+    const usersWithData = await prisma.user.findMany({
+      where: {
+        OR: [
+          { expenses: { some: {} } },
+          { income: { some: {} } },
+          { budgets: { some: {} } },
+        ],
+      },
+    });
+
+    for (let user of usersWithData) {
+      await sendExpenseReport(user.email, user.id, "monthly");
+    }
+  } catch (error) {
+    console.error("Error sending monthly reports:", error);
   }
 });
 

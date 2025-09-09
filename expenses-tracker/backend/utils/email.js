@@ -39,6 +39,15 @@ async function sendExpenseReport(to, userId, type) {
   try {
     const reportData = await generateExpenseReport(userId, type);
 
+    // Only send report if user has some data
+    if (
+      reportData.totalExpenses === 0 &&
+      reportData.totalIncome === 0 &&
+      reportData.budgetPerformance.length === 0
+    ) {
+      return; // Skip sending empty reports
+    }
+
     const subject = `${reportData.period} - ${type.charAt(0).toUpperCase() + type.slice(1)} Expense Report`;
 
     const html = generateReportHTML(reportData, type);
