@@ -85,6 +85,7 @@ app.use("/api/settings", require("./routes/settings"));
 app.use("/api/search", require("./routes/search"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/email-preferences", require("./routes/email-preferences"));
 
 // Password reset endpoint
 app.post("/api/auth/reset-password", async (req, res) => {
@@ -103,18 +104,37 @@ app.post("/api/auth/reset-password", async (req, res) => {
 // Cron jobs for reports
 cron.schedule("0 9 * * MON", async () => {
   try {
-    // Only send reports to users who have actual data
-    const usersWithData = await prisma.user.findMany({
+    // Only send weekly reports to users who have enabled them and have data
+    const usersWithWeeklyReports = await prisma.user.findMany({
       where: {
-        OR: [
-          { expenses: { some: {} } },
-          { income: { some: {} } },
-          { budgets: { some: {} } },
+        AND: [
+          {
+            OR: [
+              { expenses: { some: {} } },
+              { income: { some: {} } },
+              { budgets: { some: {} } },
+            ],
+          },
+          {
+            preferences: {
+              some: {
+                key: "weeklyEmailReports",
+                value: "true",
+              },
+            },
+          },
         ],
+      },
+      include: {
+        preferences: {
+          where: {
+            key: "weeklyEmailReports",
+          },
+        },
       },
     });
 
-    for (let user of usersWithData) {
+    for (let user of usersWithWeeklyReports) {
       await sendExpenseReport(user.email, user.id, "weekly");
     }
   } catch (error) {
@@ -124,18 +144,37 @@ cron.schedule("0 9 * * MON", async () => {
 
 cron.schedule("0 9 1 * *", async () => {
   try {
-    // Only send reports to users who have actual data
-    const usersWithData = await prisma.user.findMany({
+    // Only send monthly reports to users who have enabled them and have data
+    const usersWithMonthlyReports = await prisma.user.findMany({
       where: {
-        OR: [
-          { expenses: { some: {} } },
-          { income: { some: {} } },
-          { budgets: { some: {} } },
+        AND: [
+          {
+            OR: [
+              { expenses: { some: {} } },
+              { income: { some: {} } },
+              { budgets: { some: {} } },
+            ],
+          },
+          {
+            preferences: {
+              some: {
+                key: "monthlyEmailReports",
+                value: "true",
+              },
+            },
+          },
         ],
+      },
+      include: {
+        preferences: {
+          where: {
+            key: "monthlyEmailReports",
+          },
+        },
       },
     });
 
-    for (let user of usersWithData) {
+    for (let user of usersWithMonthlyReports) {
       await sendExpenseReport(user.email, user.id, "monthly");
     }
   } catch (error) {

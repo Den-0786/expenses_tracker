@@ -34,6 +34,8 @@ import { useSecurity } from "../context/SecurityContext";
 import { useSecurityNotice } from "../context/SecurityNoticeContext";
 import { useAuth } from "../context/AuthContext";
 import ApiService from "../services/api";
+import { showInfo } from "../utils/toast";
+import { API_CONFIG } from "../config/api";
 
 const ExpandableSection = ({
   title,
@@ -191,7 +193,6 @@ const SettingsScreen = () => {
   const [emailSettings, setEmailSettings] = useState({
     weeklyReports: false,
     monthlyReports: false,
-    emailAddress: "",
   });
 
   const [editingCategory, setEditingCategory] = useState(null);
@@ -438,10 +439,54 @@ const SettingsScreen = () => {
           tithingEnabled: settings.tithing_enabled === 1,
         });
       }
+
+      // Load email preferences
+      await loadEmailPreferences();
     } catch (error) {
       showSnackbar("Failed to load settings", "error");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadEmailPreferences = async () => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/email-preferences`, {
+        headers: {
+          Authorization: `Bearer ${await AsyncStorage.getItem("authToken")}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEmailSettings(data.preferences);
+      }
+    } catch (error) {
+      console.error("Failed to load email preferences:", error);
+    }
+  };
+
+  const saveEmailPreferences = async (newSettings) => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/email-preferences`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${await AsyncStorage.getItem("authToken")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newSettings),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEmailSettings(data.preferences);
+        showSnackbar("Email preferences saved successfully!", "success");
+      } else {
+        showSnackbar("Failed to save email preferences", "error");
+      }
+    } catch (error) {
+      showSnackbar("Failed to save email preferences", "error");
     }
   };
 
@@ -1501,12 +1546,14 @@ const SettingsScreen = () => {
               right={() => (
                 <Switch
                   value={emailSettings.weeklyReports}
-                  onValueChange={(value) =>
-                    setEmailSettings((prev) => ({
-                      ...prev,
+                  onValueChange={(value) => {
+                    const newSettings = {
+                      ...emailSettings,
                       weeklyReports: value,
-                    }))
-                  }
+                    };
+                    setEmailSettings(newSettings);
+                    saveEmailPreferences(newSettings);
+                  }}
                   color="#2196F3"
                 />
               )}
@@ -1519,12 +1566,14 @@ const SettingsScreen = () => {
               right={() => (
                 <Switch
                   value={emailSettings.monthlyReports}
-                  onValueChange={(value) =>
-                    setEmailSettings((prev) => ({
-                      ...prev,
+                  onValueChange={(value) => {
+                    const newSettings = {
+                      ...emailSettings,
                       monthlyReports: value,
-                    }))
-                  }
+                    };
+                    setEmailSettings(newSettings);
+                    saveEmailPreferences(newSettings);
+                  }}
                   color="#2196F3"
                 />
               )}
@@ -1532,111 +1581,12 @@ const SettingsScreen = () => {
             <Divider style={styles.itemDivider} />
             <List.Item
               title="Email Address"
-              description={emailSettings.emailAddress || "Not set"}
+              description={user?.email || "Not set"}
               left={(props) => <List.Icon {...props} icon="at" />}
               onPress={() => {
-                Alert.prompt(
-                  "Email Address",
-                  "Enter your email address for reports:",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Save",
-                      onPress: (text) => {
-                        if (text && text.includes("@")) {
-                          setEmailSettings((prev) => ({
-                            ...prev,
-                            emailAddress: text,
-                          }));
-                          showSnackbar("Email address updated!", "success");
-                        } else {
-                          showSnackbar(
-                            "Please enter a valid email address",
-                            "error"
-                          );
-                        }
-                      },
-                    },
-                  ],
-                  "plain-text",
-                  emailSettings.emailAddress || ""
-                );
-              }}
-            />
-          </ExpandableSection>
-
-          <ExpandableSection
-            title="Email Reports"
-            icon="email"
-            isExpanded={expandedSections.emailReports}
-            onToggle={() => toggleSection("emailReports")}
-          >
-            <List.Item
-              title="Weekly Email Reports"
-              description="Receive detailed weekly budget reports via email"
-              left={(props) => <List.Icon {...props} icon="email" />}
-              right={() => (
-                <Switch
-                  value={emailSettings.weeklyReports}
-                  onValueChange={(value) =>
-                    setEmailSettings((prev) => ({
-                      ...prev,
-                      weeklyReports: value,
-                    }))
-                  }
-                  color="#2196F3"
-                />
-              )}
-            />
-            <Divider style={styles.itemDivider} />
-            <List.Item
-              title="Monthly Email Reports"
-              description="Receive comprehensive monthly financial summaries"
-              left={(props) => <List.Icon {...props} icon="email-multiple" />}
-              right={() => (
-                <Switch
-                  value={emailSettings.monthlyReports}
-                  onValueChange={(value) =>
-                    setEmailSettings((prev) => ({
-                      ...prev,
-                      monthlyReports: value,
-                    }))
-                  }
-                  color="#2196F3"
-                />
-              )}
-            />
-            <Divider style={styles.itemDivider} />
-            <List.Item
-              title="Email Address"
-              description={emailSettings.emailAddress || "Not set"}
-              left={(props) => <List.Icon {...props} icon="at" />}
-              onPress={() => {
-                Alert.prompt(
-                  "Email Address",
-                  "Enter your email address for reports:",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Save",
-                      onPress: (text) => {
-                        if (text && text.includes("@")) {
-                          setEmailSettings((prev) => ({
-                            ...prev,
-                            emailAddress: text,
-                          }));
-                          showSnackbar("Email address updated!", "success");
-                        } else {
-                          showSnackbar(
-                            "Please enter a valid email address",
-                            "error"
-                          );
-                        }
-                      },
-                    },
-                  ],
-                  "plain-text",
-                  emailSettings.emailAddress || ""
+                showInfo(
+                  "Email Reports",
+                  "Email reports will be sent to your registered email address"
                 );
               }}
             />

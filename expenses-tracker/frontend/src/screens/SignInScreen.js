@@ -10,6 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { TextInput, Button, Portal, Modal, Title } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { API_CONFIG } from "../config/api";
 
 const SignInScreen = ({ navigation }) => {
   const [pin, setPin] = useState("");
@@ -93,7 +94,7 @@ const SignInScreen = ({ navigation }) => {
 
     try {
       const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/auth/reset-pin-request`,
+        `${API_CONFIG.BASE_URL}/auth/reset-pin-request`,
         {
           method: "POST",
           headers: {

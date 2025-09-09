@@ -6,9 +6,33 @@ export const showToast = (type, title, message) => {
     text1: title,
     text2: message,
     position: "top",
-    visibilityTime: 4000,
+    visibilityTime: 5000,
     autoHide: true,
     topOffset: 60,
+    text1Style: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: "#000000",
+    },
+    text2Style: {
+      fontSize: 14,
+      color: "#333333",
+    },
+    style: {
+      backgroundColor:
+        type === "error"
+          ? "#ffebee"
+          : type === "success"
+            ? "#e8f5e8"
+            : "#e3f2fd",
+      borderLeftWidth: 4,
+      borderLeftColor:
+        type === "error"
+          ? "#f44336"
+          : type === "success"
+            ? "#4caf50"
+            : "#2196f3",
+    },
   });
 };
 

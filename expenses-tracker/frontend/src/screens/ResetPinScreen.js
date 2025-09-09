@@ -11,6 +11,7 @@ import { TextInput, Button } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNotifications } from "../context/NotificationContext";
 import { showSuccess, showError } from "../utils/toast";
+import { API_CONFIG } from "../config/api";
 
 const ResetPinScreen = ({ navigation, route }) => {
   const [newPin, setNewPin] = useState("");
@@ -53,7 +54,7 @@ const ResetPinScreen = ({ navigation, route }) => {
 
     try {
       const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/auth/reset-pin-confirm`,
+        `${API_CONFIG.BASE_URL}/auth/reset-pin-confirm`,
         {
           method: "POST",
           headers: {
